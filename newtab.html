@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>New Tab</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #0d1117;
+      background-image:
+        radial-gradient(ellipse 70% 60% at 15% 45%, rgba(100, 60, 220, 0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 85% 55%, rgba(30, 100, 240, 0.06) 0%, transparent 60%);
+      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 580px;
+      padding: 0 20px;
+    }
+
+    #greeting {
+      font-size: 18px;
+      font-weight: 400;
+      color: #6e7681;
+      letter-spacing: 0.03em;
+      margin-bottom: 10px;
+    }
+
+    #clock {
+      font-size: 88px;
+      font-weight: 200;
+      letter-spacing: -4px;
+      color: #e6edf3;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    #date {
+      font-size: 15px;
+      color: #6e7681;
+      margin-bottom: 44px;
+    }
+
+    .search-wrapper {
+      width: 100%;
+      position: relative;
+      margin-bottom: 52px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #484f58;
+      pointer-events: none;
+      display: flex;
+    }
+
+    #search-input {
+      width: 100%;
+      padding: 15px 20px 15px 52px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 14px;
+      color: #e6edf3;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      user-select: text;
+    }
+
+    #search-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+
+    #search-input::placeholder { color: #3c434d; }
+
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      width: 100%;
+    }
+
+    .quick-link {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      padding: 14px 8px 12px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+      cursor: pointer;
+    }
+
+    .quick-link:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.07);
+    }
+
+    .ql-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .ql-name {
+      font-size: 12px;
+      color: #6e7681;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+<div class="panel">
+
+  <div id="greeting">Good morning</div>
+  <div id="clock">00:00</div>
+  <div id="date">Loading...</div>
+
+  <form class="search-wrapper" id="search-form" autocomplete="off">
+    <span class="search-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="7.5" cy="7.5" r="5.5"/>
+        <line x1="11.5" y1="11.5" x2="16.5" y2="16.5"/>
+      </svg>
+    </span>
+    <input id="search-input" type="text"
+           placeholder="Search Google or type a URL..."
+           spellcheck="false" autofocus />
+  </form>
+
+  <div class="quick-links">
+    <a class="quick-link" href="https://www.google.com">
+      <div class="ql-icon" style="background:#4285F4;font-size:24px">G</div>
+      <span class="ql-name">Google</span>
+    </a>
+    <a class="quick-link" href="https://www.youtube.com">
+      <div class="ql-icon" style="background:#FF0000">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="white"><polygon points="7,5 16,10 7,15"/></svg>
+      </div>
+      <span class="ql-name">YouTube</span>
+    </a>
+    <a class="quick-link" href="https://www.github.com">
+      <div class="ql-icon" style="background:#24292e">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.54-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23.96-.27 1.98-.4 3-.41 1.02.01 2.04.14 3 .41 2.28-1.55 3.29-1.23 3.29-1.23.66 1.65.25 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.69.82.57C20.57 21.8 24 17.31 24 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+      </div>
+      <span class="ql-name">GitHub</span>
+    </a>
+    <a class="quick-link" href="https://www.reddit.com">
+      <div class="ql-icon" style="background:#FF4500;font-size:16px;font-weight:800">r/</div>
+      <span class="ql-name">Reddit</span>
+    </a>
+    <a class="quick-link" href="https://stackoverflow.com">
+      <div class="ql-icon" style="background:#F48024;font-size:14px;letter-spacing:-1px">{;}</div>
+      <span class="ql-name">Stack Overflow</span>
+    </a>
+    <a class="quick-link" href="https://www.wikipedia.org">
+      <div class="ql-icon" style="background:#3a3a3a;font-size:22px">W</div>
+      <span class="ql-name">Wikipedia</span>
+    </a>
+    <a class="quick-link" href="https://www.twitter.com">
+      <div class="ql-icon" style="background:#000;font-size:20px;font-family:serif">𝕏</div>
+      <span class="ql-name">Twitter / X</span>
+    </a>
+    <a class="quick-link" href="https://discord.com">
+      <div class="ql-icon" style="background:#5865F2;font-size:16px;font-weight:800">D</div>
+      <span class="ql-name">Discord</span>
+    </a>
+  </div>
+
+</div>
+
+<script>
+  function tick() {
+    const now = new Date()
+    const h = String(now.getHours()).padStart(2, '0')
+    const m = String(now.getMinutes()).padStart(2, '0')
+    document.getElementById('clock').textContent = `${h}:${m}`
+
+    const hr = now.getHours()
+    document.getElementById('greeting').textContent =
+      hr >= 5 && hr < 12  ? 'Good morning'   :
+      hr >= 12 && hr < 17 ? 'Good afternoon' :
+      hr >= 17 && hr < 21 ? 'Good evening'   : 'Good night'
+
+    const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+    const months = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December']
+    document.getElementById('date').textContent =
+      `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`
+  }
+
+  tick()
+  setInterval(tick, 1000)
+
+  document.getElementById('search-form').addEventListener('submit', (e) => {
+    e.preventDefault()
+    const q = document.getElementById('search-input').value.trim()
+    if (!q) return
+    if (/^https?:\/\//i.test(q)) location.href = q
+    else if (/^[\w-]+(\.[\w-]+)+/.test(q) && !q.includes(' ')) location.href = 'https://' + q
+    else location.href = 'https://www.google.com/search?q=' + encodeURIComponent(q)
+  })
+</script>
+</body>
+</html>

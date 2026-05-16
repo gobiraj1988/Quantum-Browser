@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MyBrowser</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="browser-shell">
+
+  <!-- ══════════════ TAB BAR ══════════════════════════════════════════════ -->
+  <div id="tab-bar">
+    <button id="new-tab-btn" title="New tab (Ctrl+T)">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="6.5" y1="0.5" x2="6.5" y2="12.5"/>
+        <line x1="0.5" y1="6.5" x2="12.5" y2="6.5"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ══════════════ TOOLBAR ══════════════════════════════════════════════ -->
+  <div id="toolbar">
+
+    <!-- Navigation buttons -->
+    <div class="nav-group">
+
+      <button id="btn-back" class="nav-btn" title="Go back (Alt+Left)" disabled>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="10 3 5 8 10 13"/>
+        </svg>
+      </button>
+
+      <button id="btn-forward" class="nav-btn" title="Go forward (Alt+Right)" disabled>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 3 11 8 6 13"/>
+        </svg>
+      </button>
+
+      <button id="btn-refresh" class="nav-btn" title="Reload page (F5)">
+        <svg id="icon-refresh" width="16" height="16" viewBox="0 0 16 16" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13.5 8a5.5 5.5 0 1 1-1.16-3.5"/>
+          <polyline points="13.5 2 13.5 6 9.5 6"/>
+        </svg>
+      </button>
+
+      <button id="btn-home" class="nav-btn" title="Go home (google.com)">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 2L1.5 7.5H3V14h3.5v-4.5h3V14H13V7.5h1.5L8 2z"/>
+        </svg>
+      </button>
+
+    </div>
+
+    <!-- URL Bar -->
+    <div id="url-bar-wrapper">
+
+      <div id="lock-icon" class="lock-icon secure" title="Connection is secure (HTTPS)">
+        <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
+          <rect x="1" y="6.5" width="10" height="7" rx="1.5" fill="currentColor"/>
+          <path d="M3.5 6.5V4.5a2.5 2.5 0 0 1 5 0v2"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="6" cy="10" r="1" fill="white"/>
+        </svg>
+      </div>
+
+      <input
+        id="url-input"
+        type="text"
+        spellcheck="false"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        placeholder="Search or type a web address"
+      />
+
+      <div id="loading-spinner"></div>
+      <div id="suggestions-dropdown"></div>
+
+    </div>
+
+    <!-- ══ AD BLOCKER WIDGET ═══════════════════════════════════════════════
+         Shield button + blocked-ad counter.
+         Clicking the shield toggles the blocker on/off.
+         The shield colour shows the current state:
+           Green = ON (blocking ads)
+           Red   = OFF (ads allowed)
+    ════════════════════════════════════════════════════════════════════════ -->
+    <div id="adblocker-widget">
+
+      <button id="btn-shield" class="shield-btn on" title="Ad Blocker: ON — click to disable">
+
+        <!-- Shield outline — same SVG for both states, colour changes via CSS -->
+        <svg width="17" height="20" viewBox="0 0 17 20" fill="currentColor"
+             xmlns="http://www.w3.org/2000/svg">
+          <path d="M8.5 0L0 3.5V10c0 5.25 3.63 10.16 8.5 11.5C13.37 20.16 17 15.25 17 10V3.5L8.5 0z"/>
+          <!-- Checkmark shown when ON -->
+          <polyline id="shield-check"
+            points="4.5,10.5 7.5,13.5 12.5,7"
+            stroke="rgba(255,255,255,0.9)" stroke-width="1.6"
+            fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- X shown when OFF -->
+          <g id="shield-x" style="display:none">
+            <line x1="5.5" y1="7.5" x2="11.5" y2="13.5"
+                  stroke="rgba(255,255,255,0.8)" stroke-width="1.6" stroke-linecap="round"/>
+            <line x1="11.5" y1="7.5" x2="5.5" y2="13.5"
+                  stroke="rgba(255,255,255,0.8)" stroke-width="1.6" stroke-linecap="round"/>
+          </g>
+        </svg>
+
+      </button>
+
+      <!-- Running count of blocked requests -->
+      <span id="ad-count" title="Ads and trackers blocked this session">0</span>
+
+    </div>
+
+    <!-- Settings button -->
+    <button id="btn-settings" class="nav-btn" title="Ad Blocker Settings">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+           stroke="currentColor" stroke-width="1.6"
+           stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="8" cy="8" r="2.2"/>
+        <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15
+                 M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06
+                 M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06"/>
+      </svg>
+    </button>
+
+  </div>
+
+  <!-- ══════════════ WEBVIEW STACK ════════════════════════════════════════ -->
+  <!-- One <webview> per tab, inserted dynamically by renderer.js -->
+  <div id="webview-stack"></div>
+
+  <!-- ══════════════ STATUS BAR ═══════════════════════════════════════════ -->
+  <div id="status-bar">
+    <span id="status-text">Ready</span>
+  </div>
+
+</div>
+
+<!-- Main browser logic -->
+<script src="renderer.js"></script>
+
+<!-- Ad blocker UI — small standalone script, no changes to renderer.js needed -->
+<script>
+(function () {
+  'use strict'
+
+  const btnShield  = document.getElementById('btn-shield')
+  const adCountEl  = document.getElementById('ad-count')
+  const shieldCheck = document.getElementById('shield-check')
+  const shieldX     = document.getElementById('shield-x')
+
+  let adBlockOn = true   // local mirror of main-process state
+
+  // ── Format large numbers nicely ──────────────────────────────────────────
+  function fmt(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
+    if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'K'
+    return String(n)
+  }
+
+  // ── Animate the counter when a new ad is blocked ─────────────────────────
+  function bumpCounter() {
+    adCountEl.classList.remove('count-bump')
+    void adCountEl.offsetWidth     // force reflow so the animation restarts
+    adCountEl.classList.add('count-bump')
+  }
+
+  // ── Update the shield visual state ───────────────────────────────────────
+  function setShieldUI(enabled) {
+    adBlockOn              = enabled
+    btnShield.className    = 'shield-btn ' + (enabled ? 'on' : 'off')
+    btnShield.title        = enabled
+      ? 'Ad Blocker: ON — click to disable'
+      : 'Ad Blocker: OFF — click to enable'
+    shieldCheck.style.display = enabled ? '' : 'none'
+    shieldX.style.display     = enabled ? 'none' : ''
+  }
+
+  // ── Fetch initial state from main process ─────────────────────────────────
+  window.electronAPI.getAdBlockState().then(({ enabled, count }) => {
+    setShieldUI(enabled)
+    adCountEl.textContent = fmt(count)
+  }).catch(() => {
+    // electronAPI not yet available (first render) — use defaults
+  })
+
+  // ── React to blocked-ad counter updates ───────────────────────────────────
+  window.electronAPI.onAdBlockCount((count) => {
+    adCountEl.textContent = fmt(count)
+    bumpCounter()
+  })
+
+  // ── React to toggled state ────────────────────────────────────────────────
+  window.electronAPI.onAdBlockState(({ enabled, count }) => {
+    setShieldUI(enabled)
+    adCountEl.textContent = fmt(count)
+  })
+
+  // ── Toggle on shield click ────────────────────────────────────────────────
+  btnShield.addEventListener('click', () => {
+    const next = !adBlockOn
+    setShieldUI(next)
+    window.electronAPI.toggleAdBlock(next)
+  })
+
+  // ── Settings button ───────────────────────────────────────────────────────
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    window.electronAPI.openSettings()
+  })
+})()
+</script>
+
+</body>
+</html>

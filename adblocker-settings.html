@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ad Blocker Settings</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #202124;
+      --bg2:    #2d2e32;
+      --bg3:    #35363a;
+      --hover:  #3c4043;
+      --accent: #8ab4f8;
+      --green:  #81c995;
+      --red:    #f28b82;
+      --text:   #e8eaed;
+      --muted:  #9aa0a6;
+      --border: rgba(255,255,255,0.08);
+    }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    body { display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--bg2);
+    }
+    .header-shield { color: var(--green); flex-shrink: 0; }
+    .header h1 { font-size: 14px; font-weight: 600; flex: 1; }
+    .header-badge {
+      font-size: 11px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-weight: 500;
+    }
+    .header-badge.on  { background: rgba(129,201,149,0.15); color: var(--green); }
+    .header-badge.off { background: rgba(242,139,130,0.15); color: var(--red);   }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      padding: 0 20px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      padding: 9px 13px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .tab-btn:hover  { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── Panels ── */
+    .panel { display: none; flex: 1; overflow: auto; padding: 16px 20px; gap: 14px; flex-direction: column; }
+    .panel.active { display: flex; }
+
+    /* ── Cards ── */
+    .card { background: var(--bg2); border-radius: 10px; padding: 14px 16px; }
+    .card-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── Input row ── */
+    .input-row { display: flex; gap: 8px; }
+    .input-row input, input.full {
+      flex: 1;
+      min-width: 0;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 11px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .input-row input:focus, input.full:focus { border-color: var(--accent); }
+    .input-row input::placeholder, input.full::placeholder { color: #555; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 7px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: opacity 0.12s;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn-primary   { background: var(--accent); color: #000; }
+    .btn-danger    { background: var(--red);    color: #000; }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+    .btn-green     { background: var(--green);  color: #000; }
+
+    /* ── Domain list ── */
+    .domain-list { display: flex; flex-direction: column; gap: 4px; }
+    .domain-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      background: var(--bg3);
+      border-radius: 6px;
+    }
+    .domain-name { flex: 1; font-size: 12.5px; font-family: 'Courier New', monospace; }
+    .rm-btn {
+      width: 22px; height: 22px;
+      border: none; background: transparent;
+      border-radius: 4px; cursor: pointer;
+      color: var(--muted); font-size: 14px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.1s, color 0.1s;
+    }
+    .rm-btn:hover { background: rgba(242,139,130,0.18); color: var(--red); }
+
+    /* ── Empty message ── */
+    .empty { color: var(--muted); font-size: 12px; text-align: center; padding: 18px 0; }
+
+    /* ── Blocked log ── */
+    .log-list { display: flex; flex-direction: column; gap: 1px; }
+    .log-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 5px 8px; border-radius: 5px; font-size: 11.5px;
+    }
+    .log-item:hover { background: var(--hover); }
+    .log-domain { font-weight: 600; color: var(--red); font-family: monospace; min-width: 150px; flex-shrink: 0; }
+    .log-url    { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-family: monospace; font-size: 10px; }
+    .log-time   { color: #555; font-size: 10px; flex-shrink: 0; }
+    .log-controls { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+
+    /* ── Stats ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .stat-card { background: var(--bg3); border-radius: 8px; padding: 14px; text-align: center; }
+    .stat-value { font-size: 26px; font-weight: 700; color: var(--accent); line-height: 1.1; }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .stat-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 0; border-top: 1px solid var(--border);
+      font-size: 12.5px;
+    }
+    .stat-row-val { color: var(--muted); font-size: 12px; }
+
+    /* ── Custom rules textarea ── */
+    .rules-area {
+      width: 100%; height: 160px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--text);
+      font: 12px/1.6 'Courier New', monospace;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .rules-area:focus { border-color: var(--accent); }
+    .hint { font-size: 11px; color: var(--muted); line-height: 1.5; }
+    .hint code { color: var(--accent); }
+    .rules-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ── Toggle rows ── */
+    .toggle-row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+    }
+    .toggle-row + .toggle-row { border-top: 1px solid var(--border); }
+    .toggle-text {}
+    .toggle-label { font-size: 13px; font-weight: 500; }
+    .toggle-desc  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .toggle {
+      position: relative; width: 40px; height: 22px; flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 999px; cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute; left: 3px; top: 50%;
+      transform: translateY(-50%);
+      width: 14px; height: 14px;
+      background: var(--muted); border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle input:checked ~ .toggle-track { background: var(--accent); border-color: var(--accent); }
+    .toggle input:checked ~ .toggle-track::after { transform: translate(18px,-50%); background: #000; }
+
+    /* ── Update status ── */
+    #update-status { font-size: 12px; color: var(--muted); min-height: 20px; padding-top: 4px; }
+    #update-status.ok  { color: var(--green); }
+    #update-status.err { color: var(--red);   }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <svg class="header-shield" width="17" height="20" viewBox="0 0 17 20" fill="currentColor">
+    <path d="M8.5 0L0 3.5V10c0 5.25 3.63 10.16 8.5 11.5C13.37 20.16 17 15.25 17 10V3.5L8.5 0z"/>
+    <polyline points="4.5,10.5 7.5,13.5 12.5,7"
+      stroke="rgba(255,255,255,0.85)" stroke-width="1.6"
+      fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <h1>Ad Blocker Settings</h1>
+  <span id="header-badge" class="header-badge on">ON</span>
+</div>
+
+<!-- Tabs -->
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="whitelist">Whitelist</button>
+  <button class="tab-btn" data-tab="log">Blocked Log</button>
+  <button class="tab-btn" data-tab="stats">Statistics</button>
+  <button class="tab-btn" data-tab="custom">Custom Rules</button>
+  <button class="tab-btn" data-tab="options">Options</button>
+</nav>
+
+<!-- ── Whitelist ── -->
+<div class="panel active" id="tab-whitelist">
+  <div class="card">
+    <div class="card-title">Allow ads on specific sites</div>
+    <div class="input-row">
+      <input id="wl-input" type="text" placeholder="google.com">
+      <button class="btn btn-primary" id="wl-add">Add Site</button>
+    </div>
+  </div>
+  <div class="card" style="flex:1">
+    <div class="card-title">Whitelisted domains</div>
+    <div class="domain-list" id="wl-list">
+      <div class="empty">No sites whitelisted — ads are blocked everywhere.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Blocked Log ── -->
+<div class="panel" id="tab-log">
+  <div class="card" style="flex:1;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="card-title" style="margin:0">Recently blocked requests</div>
+      <button class="btn btn-secondary" id="log-refresh" style="padding:4px 10px;font-size:11px">Refresh</button>
+    </div>
+    <div class="log-list" id="log-list" style="flex:1;overflow:auto;max-height:380px">
+      <div class="empty">No blocked requests recorded yet.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Statistics ── -->
+<div class="panel" id="tab-stats">
+  <div class="card">
+    <div class="card-title">Blocking summary</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="s-today">0</div>
+        <div class="stat-label">Blocked today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="s-alltime">0</div>
+        <div class="stat-label">All-time blocked</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="s-domains">0</div>
+        <div class="stat-label">Known ad domains</div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <span>This session</span>
+      <span class="stat-row-val" id="s-session">0 blocked</span>
+    </div>
+    <div class="stat-row">
+      <span>Strict mode extras</span>
+      <span class="stat-row-val" id="s-strict">Off</span>
+    </div>
+  </div>
+  <div style="text-align:right">
+    <button class="btn btn-danger" id="clear-stats">Reset All Statistics</button>
+  </div>
+</div>
+
+<!-- ── Custom Rules ── -->
+<div class="panel" id="tab-custom">
+  <div class="card" style="flex:1;display:flex;flex-direction:column;gap:12px">
+    <div class="card-title">Custom block rules</div>
+    <p class="hint">
+      One rule per line. Any request URL containing the text will be blocked.<br>
+      Example: <code>/tracking/</code> &nbsp;·&nbsp; <code>ads.example.com</code> &nbsp;·&nbsp; <code>/pixel.gif</code>
+    </p>
+    <textarea class="rules-area" id="custom-ta"
+      placeholder="/tracking/&#10;/analytics.js&#10;ads.mysite.com"></textarea>
+    <div class="rules-actions">
+      <button class="btn btn-secondary" id="custom-discard">Discard</button>
+      <button class="btn btn-primary"   id="custom-save">Save Rules</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Options ── -->
+<div class="panel" id="tab-options">
+  <div class="card">
+    <div class="card-title">Blocking behavior</div>
+
+    <div class="toggle-row">
+      <div class="toggle-text">
+        <div class="toggle-label">Ad Blocker enabled</div>
+        <div class="toggle-desc">Block ads and trackers globally</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="opt-enabled">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-text">
+        <div class="toggle-label">Strict mode</div>
+        <div class="toggle-desc">Also block analytics, session recording (Hotjar, Mixpanel…), and retargeting — may break some site features</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="opt-strict">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Filter lists</div>
+    <div class="toggle-row" style="border:none;padding:0">
+      <div class="toggle-text">
+        <div class="toggle-label">Update lists now</div>
+        <div class="toggle-desc">Downloads latest EasyList + EasyPrivacy (~110,000 domains)</div>
+      </div>
+      <button class="btn btn-green" id="update-btn">Update Now</button>
+    </div>
+    <div id="update-status"></div>
+  </div>
+</div>
+
+<script>
+'use strict'
+;(async () => {
+
+const api = window.electronAPI
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
+    btn.classList.add('active')
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active')
+  })
+})
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+const esc = s => String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+
+function fmt(n) {
+  n = Number(n) || 0
+  if (n >= 1_000_000) return (n/1_000_000).toFixed(1) + 'M'
+  if (n >= 1_000)     return (n/1_000).toFixed(1) + 'K'
+  return String(n)
+}
+
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000)
+  if (s < 60)   return s + 's ago'
+  if (s < 3600) return Math.floor(s/60) + 'm ago'
+  return Math.floor(s/3600) + 'h ago'
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function renderWhitelist(list) {
+  const el = document.getElementById('wl-list')
+  if (!list || !list.length) {
+    el.innerHTML = '<div class="empty">No sites whitelisted — ads are blocked everywhere.</div>'
+    return
+  }
+  el.innerHTML = list.map(d =>
+    `<div class="domain-item">
+       <span class="domain-name">${esc(d)}</span>
+       <button class="rm-btn" data-d="${esc(d)}" title="Remove">✕</button>
+     </div>`
+  ).join('')
+}
+
+function renderLog(log) {
+  const el = document.getElementById('log-list')
+  if (!log || !log.length) {
+    el.innerHTML = '<div class="empty">No blocked requests recorded yet.</div>'
+    return
+  }
+  el.innerHTML = log.map(item =>
+    `<div class="log-item">
+       <span class="log-domain">${esc(item.domain || '?')}</span>
+       <span class="log-url" title="${esc(item.url)}">${esc(item.url)}</span>
+       <span class="log-time">${timeAgo(item.ts)}</span>
+     </div>`
+  ).join('')
+}
+
+function renderStats(stats, domains, sm) {
+  document.getElementById('s-today').textContent   = fmt(stats.todayCount)
+  document.getElementById('s-alltime').textContent = fmt(stats.allTimeCount)
+  document.getElementById('s-domains').textContent = fmt(domains)
+  document.getElementById('s-session').textContent = fmt(stats.sessionCount) + ' blocked'
+  document.getElementById('s-strict').textContent  = sm ? 'On — extra categories blocked' : 'Off'
+}
+
+function applyData(d) {
+  // Header
+  const badge = document.getElementById('header-badge')
+  badge.textContent = d.enabled ? 'ON · ' + fmt(d.stats.sessionCount) + ' blocked' : 'OFF'
+  badge.className = 'header-badge ' + (d.enabled ? 'on' : 'off')
+
+  // Whitelist tab
+  renderWhitelist(d.userWhitelist)
+
+  // Log tab
+  renderLog(d.blockedLog)
+
+  // Stats tab
+  renderStats(d.stats, d.domains, d.strictMode)
+
+  // Toggles
+  document.getElementById('opt-enabled').checked = d.enabled
+  document.getElementById('opt-strict').checked  = d.strictMode
+
+  // Custom rules (don't overwrite if user is editing)
+  const ta = document.getElementById('custom-ta')
+  if (document.activeElement !== ta) {
+    ta.value = (d.customRules || []).join('\n')
+  }
+
+  savedRules = d.customRules || []
+}
+
+// ── Load initial state ─────────────────────────────────────────────────────
+let savedRules = []
+let data = await api.getSettings()
+applyData(data)
+
+// ── Live updates from main process ────────────────────────────────────────
+api.onSettingsUpdate(d => { data = d; applyData(d) })
+
+// ── Whitelist ──────────────────────────────────────────────────────────────
+document.getElementById('wl-add').addEventListener('click', async () => {
+  const inp = document.getElementById('wl-input')
+  const v = inp.value.trim()
+  if (!v) return
+  await api.addToWhitelist(v)
+  inp.value = ''
+  const d = await api.getSettings()
+  renderWhitelist(d.userWhitelist)
+})
+
+document.getElementById('wl-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('wl-add').click()
+})
+
+document.getElementById('wl-list').addEventListener('click', async e => {
+  const btn = e.target.closest('.rm-btn')
+  if (!btn) return
+  await api.removeFromWhitelist(btn.dataset.d)
+  const d = await api.getSettings()
+  renderWhitelist(d.userWhitelist)
+})
+
+// ── Blocked log ────────────────────────────────────────────────────────────
+document.getElementById('log-refresh').addEventListener('click', async () => {
+  const d = await api.getSettings()
+  renderLog(d.blockedLog)
+})
+
+// ── Stats — clear ──────────────────────────────────────────────────────────
+document.getElementById('clear-stats').addEventListener('click', async () => {
+  if (!confirm('Reset all statistics? This cannot be undone.')) return
+  const d = await api.clearStats()
+  applyData(d)
+})
+
+// ── Custom rules ───────────────────────────────────────────────────────────
+document.getElementById('custom-save').addEventListener('click', async () => {
+  const text  = document.getElementById('custom-ta').value
+  const rules = text.split('\n').map(r => r.trim()).filter(Boolean)
+  const toAdd = rules.filter(r => !savedRules.includes(r))
+  const toRem = savedRules.filter(r => !rules.includes(r))
+  for (const r of toRem) await api.removeCustomRule(r)
+  for (const r of toAdd) await api.addCustomRule(r)
+  savedRules = rules
+  const btn = document.getElementById('custom-save')
+  btn.textContent = 'Saved!'
+  setTimeout(() => { btn.textContent = 'Save Rules' }, 1500)
+})
+
+document.getElementById('custom-discard').addEventListener('click', () => {
+  document.getElementById('custom-ta').value = savedRules.join('\n')
+})
+
+// ── Options toggles ────────────────────────────────────────────────────────
+document.getElementById('opt-enabled').addEventListener('change', e => {
+  api.toggleAdBlock(e.target.checked)
+})
+
+document.getElementById('opt-strict').addEventListener('change', async e => {
+  await api.setStrictMode(e.target.checked)
+})
+
+// ── Filter list update ─────────────────────────────────────────────────────
+const updateBtn = document.getElementById('update-btn')
+const updateSt  = document.getElementById('update-status')
+
+api.onFilterUpdateStatus(msg => {
+  if (msg.phase === 'start') {
+    updateBtn.disabled = true
+    updateSt.textContent = 'Starting download…'
+    updateSt.className = ''
+  } else if (msg.phase === 'downloading') {
+    updateSt.textContent = 'Downloading ' + msg.name + '…'
+  } else if (msg.phase === 'done') {
+    updateBtn.disabled = false
+    updateSt.textContent = 'Done — ' + fmt(msg.domains) + ' domains loaded'
+    updateSt.className = 'ok'
+  } else if (msg.phase === 'error') {
+    updateBtn.disabled = false
+    updateSt.textContent = 'Error: ' + msg.error
+    updateSt.className = 'err'
+  }
+})
+
+updateBtn.addEventListener('click', () => api.forceUpdateFilters())
+
+})()
+</script>
+</body>
+</html>

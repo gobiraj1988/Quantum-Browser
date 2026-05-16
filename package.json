@@ -1,0 +1,12 @@
+{
+  "name": "mybrowser",
+  "version": "1.0.0",
+  "description": "My Simple Web Browser",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "latest"
+  }
+}
