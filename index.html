@@ -122,6 +122,13 @@
 
     </div>
 
+    <!-- AI Assistant toggle -->
+    <button id="btn-ai" class="nav-btn" title="Claude AI Assistant">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor">
+        <path d="M7.5 0.5 L8.9 5.3 L13.8 5.4 L9.9 8.4 L11.4 13.2 L7.5 10.2 L3.6 13.2 L5.1 8.4 L1.2 5.4 L6.1 5.3 Z"/>
+      </svg>
+    </button>
+
     <!-- Settings button -->
     <button id="btn-settings" class="nav-btn" title="Ad Blocker Settings">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
@@ -136,9 +143,12 @@
 
   </div>
 
-  <!-- ══════════════ WEBVIEW STACK ════════════════════════════════════════ -->
-  <!-- One <webview> per tab, inserted dynamically by renderer.js -->
-  <div id="webview-stack"></div>
+  <!-- ══════════════ MAIN AREA (webview + AI sidebar) ══════════════════════ -->
+  <div id="main-area">
+    <!-- One <webview> per tab, inserted dynamically by renderer.js -->
+    <div id="webview-stack"></div>
+    <!-- AI sidebar injected here by ai-sidebar.js -->
+  </div>
 
   <!-- ══════════════ STATUS BAR ═══════════════════════════════════════════ -->
   <div id="status-bar">
@@ -149,6 +159,8 @@
 
 <!-- Main browser logic -->
 <script src="renderer.js"></script>
+<!-- AI sidebar -->
+<script src="ai-sidebar.js"></script>
 
 <!-- Ad blocker UI — small standalone script, no changes to renderer.js needed -->
 <script>

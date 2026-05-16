@@ -42,4 +42,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ── Open settings window ───────────────────────────────────────────────────
   openSettings: () => ipcRenderer.invoke('open-settings'),
+
+  // ── AI Assistant ───────────────────────────────────────────────────────────
+  aiChat:    (payload) => ipcRenderer.invoke('ai-chat',     payload),
+  aiGetKey:  ()        => ipcRenderer.invoke('ai-get-key'),
+  aiSaveKey: (data)    => ipcRenderer.invoke('ai-save-key', data),
 })
