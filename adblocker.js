@@ -93,6 +93,36 @@ function saveStats() {
 
 function getTodayStr() { return new Date().toISOString().slice(0, 10) }
 
+// ─── Platform-specific ad URL patterns ───────────────────────────────────────
+// Checked BEFORE the essential whitelist so youtube.com/googlevideo.com/
+// facebook.com ad requests are blocked even though those domains are whitelisted.
+
+function isPlatformAdUrl(url) {
+  const u = url.toLowerCase()
+
+  // ── YouTube / Google video ads ─────────────────────────────────────────────
+  // Ad video streams carry adsid= in the query string; normal video CDN does not
+  if (u.includes('googlevideo.com/videoplayback') && (u.includes('adsid=') || u.includes('adformat='))) return true
+  // YouTube ad-specific API endpoints
+  if (u.includes('youtube.com/api/stats/ads'))                return true
+  if (u.includes('youtube.com/pagead/'))                      return true
+  if (u.includes('youtube.com/ptracking'))                    return true
+  if (u.includes('youtube.com/get_video_info') && u.includes('adformat')) return true
+  // DoubleClick subdomains not already caught by the domain list
+  if (u.includes('googleads.g.doubleclick.net'))              return true
+  if (u.includes('static.doubleclick.net'))                   return true
+
+  // ── Facebook ads ───────────────────────────────────────────────────────────
+  if (u.includes('facebook.com/ads/'))                        return true
+  if (u.includes('an.facebook.com/'))                         return true
+  // Facebook SDK loader — used to serve Audience Network ads on third-party sites
+  if (u.includes('connect.facebook.net/') && u.includes('sdk.js')) return true
+  // Facebook ad image/script CDN paths
+  if (u.includes('fbcdn.net/') && u.includes('/ads/'))        return true
+
+  return false
+}
+
 // ─── URL analysis (runs on EVERY request — keep fast) ─────────────────────────
 
 function getHostname(url) {
@@ -137,6 +167,11 @@ function shouldBlock(url) {
   if (!isEnabled) return false
   if (!url || url.startsWith('file://') || url.startsWith('chrome-extension://') ||
       url.startsWith('about:') || url.startsWith('devtools:')) return false
+
+  // Platform ad URLs are blocked BEFORE the essential-domain check so that
+  // ad requests on whitelisted domains (youtube.com, googlevideo.com, facebook.com)
+  // are still caught.
+  if (isPlatformAdUrl(url)) return true
 
   const h = getHostname(url)
   if (isEssentialDomain(h)) return false   // YouTube, Google APIs, etc.
