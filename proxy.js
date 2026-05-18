@@ -51,10 +51,15 @@ async function testProxy(proxy) {
 }
 
 // ─── Verify via Electron net (same networking path as webviews) ───────────────
+// IMPORTANT: must pass session explicitly — without it electronNet uses the
+// system proxy, not the Electron session proxy we set with setProxy().
 
 function verifyViaElectronNet() {
   return new Promise((resolve, reject) => {
-    const req   = electronNet.request('https://api.ipify.org?format=json')
+    const req   = electronNet.request({
+      url:     'https://api.ipify.org?format=json',
+      session: session.defaultSession,   // ← critical: use session with our proxy
+    })
     let raw     = ''
     const timer = setTimeout(() => { try { req.abort() } catch (_) {}; reject(new Error('Timeout')) }, 12000)
     req.on('response', res => {
@@ -132,20 +137,39 @@ async function connect(proxy) {
   console.log('[Proxy] Connected →', proxy.ip + ':' + proxy.port, '(' + countryCode + ')')
 
   // ── Verify the session actually routes through the proxy ───────────────────
+  // socks5h = proxy resolves DNS (no leak). Some proxies reject hostname
+  // resolution; if verification shows real IP, fall back to plain socks5.
+  let verifiedIp = null
+
   try {
     const ip = await verifyViaElectronNet()
-    state.proxyIp = ip
-    if (ip === state.realIp) {
-      console.warn('[Proxy] WARNING: proxy IP matches real IP — routing may be broken')
-      state.proxyIp = null
+    if (ip && ip !== state.realIp) {
+      verifiedIp = ip
+      console.log('[Proxy] Verified ✓ socks5h — proxy IP:', ip)
     } else {
-      console.log('[Proxy] Verified ✓ proxy IP:', ip)
+      // socks5h not routing — retry with socks5 (local DNS, less ideal but works)
+      console.log('[Proxy] socks5h not routing — retrying with socks5...')
+      await session.defaultSession.setProxy({
+        proxyRules:       `socks5=${proxy.ip}:${proxy.port}`,
+        proxyBypassRules: '<local>',
+      })
+      try {
+        const ip2 = await verifyViaElectronNet()
+        if (ip2 && ip2 !== state.realIp) {
+          verifiedIp = ip2
+          console.log('[Proxy] Verified ✓ socks5 fallback — proxy IP:', ip2)
+        } else {
+          console.warn('[Proxy] Proxy not routing traffic — both socks5h and socks5 returned real IP')
+        }
+      } catch (e2) {
+        console.warn('[Proxy] socks5 fallback verification failed:', e2.message)
+      }
     }
   } catch (err) {
     console.warn('[Proxy] Verification failed:', err.message)
-    state.proxyIp = null
   }
 
+  state.proxyIp = verifiedIp
   startAutoTimer()
   push()
 }
