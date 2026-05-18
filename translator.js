@@ -94,6 +94,7 @@ const LANGS = {
   'Russian':              'ru',
   'Spanish':              'es',
   'Swedish':              'sv',
+  'Tamil':                'ta',
   'Turkish':              'tr',
   'Ukrainian':            'uk',
   'Vietnamese':           'vi',
