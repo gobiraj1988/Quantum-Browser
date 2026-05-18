@@ -1,11 +1,13 @@
 const { app, BrowserWindow, ipcMain, screen, globalShortcut, net, shell, webContents } = require('electron')
 const path      = require('path')
 const fs        = require('fs')
-const adblocker   = require('./adblocker')    // ← ad blocker module
-const privacy     = require('./privacy')      // ← privacy engine
-const downloader  = require('./downloader')   // ← video downloader
-const proxy       = require('./proxy')        // ← proxy / VPN engine
-const adInjector  = require('./ad-injector')  // ← YouTube/Facebook script injector
+const adblocker        = require('./adblocker')          // ← ad blocker module
+const privacy          = require('./privacy')            // ← privacy engine
+const downloader       = require('./downloader')         // ← video downloader
+const proxy            = require('./proxy')              // ← proxy / VPN engine
+const adInjector       = require('./ad-injector')        // ← YouTube/Facebook script injector
+const webrtcBlocker    = require('./webrtc-blocker')     // ← WebRTC leak prevention
+const fingerprintSpoofer = require('./fingerprint-spoofer') // ← timezone/language spoof
 
 // ─── Window State Persistence ─────────────────────────────────────────────────
 
@@ -102,6 +104,10 @@ function createWindow() {
 
   // ── Initialise YouTube/Facebook ad script injector ─────────────────────────
   adInjector.init()
+
+  // ── Initialise VPN protection modules (must run before any webviews open) ──
+  webrtcBlocker.init()
+  fingerprintSpoofer.init()
 
   // ── Initialise privacy engine ──────────────────────────────────────────────
   privacy.init(win)
