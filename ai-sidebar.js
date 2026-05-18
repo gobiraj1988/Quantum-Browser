@@ -203,13 +203,14 @@ document.getElementById('ai-facts-btn').addEventListener('click', async () => {
 })
 
 // ── Translate ─────────────────────────────────────────────────────────────────
+// Uses translator.js (LibreTranslate + AI fallback) when available,
+// otherwise falls back to AI-only translation in the chat.
 
 document.getElementById('ai-translate-btn').addEventListener('click', () => {
   translateRow.classList.toggle('open')
   if (translateRow.classList.contains('open')) langSelect.focus()
 })
 
-// Enable Go button only when a language is selected
 langSelect.addEventListener('change', () => {
   translateGo.disabled = !langSelect.value
 })
@@ -219,6 +220,14 @@ translateGo.addEventListener('click', async () => {
   if (!lang) return
   translateRow.classList.remove('open')
   if (isBusy) return
+
+  // Prefer full-page LibreTranslate if available
+  if (window.translator?.translatePage) {
+    await window.translator.translatePage(lang)
+    return
+  }
+
+  // AI-only fallback (shows translation in chat)
   const ctx = await getPageContext()
   if (!ctx.text) { appendMsg('error', 'Navigate to a webpage first.'); return }
   await sendMessage(
@@ -229,6 +238,16 @@ translateGo.addEventListener('click', async () => {
 
 langSelect.addEventListener('keydown', e => {
   if (e.key === 'Enter') translateGo.click()
+})
+
+// ── Reading Mode (sidebar shortcut) ──────────────────────────────────────────
+
+document.getElementById('ai-reader-btn')?.addEventListener('click', () => {
+  if (window.readingMode?.enterReadingMode) {
+    window.readingMode.enterReadingMode()
+  } else {
+    appendMsg('error', 'Reading mode is loading. Try again in a moment.')
+  }
 })
 
 // ── Grammar Check ─────────────────────────────────────────────────────────────

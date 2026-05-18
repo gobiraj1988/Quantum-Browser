@@ -15,7 +15,7 @@
   <button class="ai-header-btn" id="ai-close-btn" title="Close sidebar">✕</button>
 </div>
 
-<!-- Summarize button — one click, no typing needed -->
+<!-- Summarize button — one click, instant summary -->
 <div class="ai-actions">
   <button class="ai-summarize-btn" id="ai-summarize-btn">
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor"
@@ -26,7 +26,7 @@
   </button>
 </div>
 
-<!-- Quick action tool buttons -->
+<!-- Quick tool buttons (2×3 grid) -->
 <div class="ai-tools-grid">
   <button class="ai-tool-btn" id="ai-facts-btn" title="List key facts from this page">
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
@@ -36,7 +36,7 @@
     </svg>
     Find Facts
   </button>
-  <button class="ai-tool-btn" id="ai-translate-btn" title="Translate page content">
+  <button class="ai-tool-btn" id="ai-translate-btn" title="Translate this page (full page via LibreTranslate)">
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="6" cy="6" r="5"/>
@@ -44,7 +44,7 @@
     </svg>
     Translate
   </button>
-  <button class="ai-tool-btn" id="ai-grammar-btn" title="Grammar-check selected text">
+  <button class="ai-tool-btn" id="ai-grammar-btn" title="Select text on the page, then click">
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <path d="M2 9l3-7 3 7M3.5 7h3"/>
@@ -52,7 +52,7 @@
     </svg>
     Grammar
   </button>
-  <button class="ai-tool-btn" id="ai-explain-btn" title="Explain selected text simply">
+  <button class="ai-tool-btn" id="ai-explain-btn" title="Select text on the page, then click">
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="6" cy="5" r="3.5"/>
@@ -60,15 +60,25 @@
     </svg>
     Explain
   </button>
+  <button class="ai-tool-btn" id="ai-reader-btn" title="Open this page in clean reading mode with AI summary"
+          style="grid-column: span 2;">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round">
+      <rect x="1" y="1" width="10" height="10" rx="1.5"/>
+      <line x1="3.5" y1="4"   x2="8.5" y2="4"/>
+      <line x1="3.5" y1="6"   x2="8.5" y2="6"/>
+      <line x1="3.5" y1="8"   x2="6"   y2="8"/>
+    </svg>
+    Reading Mode  <small style="opacity:.55;font-size:10px;margin-left:4px">+ AI summary</small>
+  </button>
 </div>
 
-<!-- Translate language picker (shown only when Translate is clicked) -->
+<!-- Translate language picker (shown when Translate button is clicked) -->
 <div class="ai-translate-row" id="ai-translate-row">
   <select class="ai-lang-select" id="ai-lang-select">
     <option value="">Choose language…</option>
     <option>Arabic</option>
     <option>Chinese (Simplified)</option>
-    <option>Chinese (Traditional)</option>
     <option>Dutch</option>
     <option>English</option>
     <option>French</option>

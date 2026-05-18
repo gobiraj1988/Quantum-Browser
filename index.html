@@ -4,6 +4,20 @@
   <meta charset="UTF-8">
   <title>MyBrowser</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* VPN widget status dot */
+    #vpn-widget { position: relative; display: inline-flex; }
+    #btn-vpn    { position: relative; }
+    .vpn-dot {
+      position: absolute; top: 3px; right: 3px;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: transparent;
+      border: 1.5px solid transparent;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .vpn-dot.on  { background: #81c995; border-color: #202124; }
+    .vpn-dot.off { background: transparent; }
+  </style>
 </head>
 <body>
 
@@ -122,6 +136,209 @@
 
     </div>
 
+    <!-- Privacy score widget -->
+    <div id="privacy-widget">
+      <button id="btn-privacy" title="Privacy settings &amp; score">
+        <svg width="20" height="20" viewBox="0 0 22 22" style="flex-shrink:0">
+          <!-- Track circle -->
+          <circle cx="11" cy="11" r="9" fill="none"
+                  stroke="rgba(255,255,255,0.1)" stroke-width="2.5"/>
+          <!-- Score arc — dasharray=56.55 (circumference of r=9 circle) -->
+          <circle id="prv-arc" cx="11" cy="11" r="9" fill="none"
+                  stroke="#34d399" stroke-width="2.5"
+                  stroke-dasharray="56.55" stroke-dashoffset="0"
+                  stroke-linecap="round"
+                  transform="rotate(-90 11 11)"/>
+        </svg>
+        <span id="prv-score">—</span>
+      </button>
+
+      <!-- Privacy settings panel (shown on btn-privacy click) -->
+      <div id="privacy-panel">
+        <div class="pp-header">
+          <span class="pp-title">Privacy Protection</span>
+          <span class="pp-score-badge" id="pp-badge">— / 100</span>
+        </div>
+
+        <div class="pp-toggles">
+
+          <div class="pp-row">
+            <div class="pp-label">
+              <span class="pp-label-main">Do Not Track</span>
+              <span class="pp-label-sub">Adds DNT + Sec-GPC headers to all requests</span>
+            </div>
+            <label class="pp-toggle">
+              <input type="checkbox" id="pv-dnt" data-key="doNotTrack">
+              <div class="pp-toggle-track"></div>
+              <div class="pp-toggle-thumb"></div>
+            </label>
+          </div>
+
+          <div class="pp-row">
+            <div class="pp-label">
+              <span class="pp-label-main">Block Tracking Cookies</span>
+              <span class="pp-label-sub">Strips cookies from Google Ads, Meta, Criteo &amp; 30+ trackers</span>
+            </div>
+            <label class="pp-toggle">
+              <input type="checkbox" id="pv-track" data-key="blockTrackingCookies">
+              <div class="pp-toggle-track"></div>
+              <div class="pp-toggle-thumb"></div>
+            </label>
+          </div>
+
+          <div class="pp-row">
+            <div class="pp-label">
+              <span class="pp-label-main">Block Third-Party Cookies</span>
+              <span class="pp-label-sub">Stops cross-site tracking between unrelated domains</span>
+            </div>
+            <label class="pp-toggle">
+              <input type="checkbox" id="pv-3pc" data-key="blockThirdPartyCookies">
+              <div class="pp-toggle-track"></div>
+              <div class="pp-toggle-thumb"></div>
+            </label>
+          </div>
+
+          <div class="pp-row">
+            <div class="pp-label">
+              <span class="pp-label-main">HTTPS Upgrade</span>
+              <span class="pp-label-sub">Automatically redirects HTTP → HTTPS</span>
+            </div>
+            <label class="pp-toggle">
+              <input type="checkbox" id="pv-https" data-key="httpsUpgrade">
+              <div class="pp-toggle-track"></div>
+              <div class="pp-toggle-thumb"></div>
+            </label>
+          </div>
+
+          <div class="pp-row">
+            <div class="pp-label">
+              <span class="pp-label-main">WebRTC Leak Prevention</span>
+              <span class="pp-label-sub">Prevents real IP address from leaking via WebRTC</span>
+            </div>
+            <label class="pp-toggle">
+              <input type="checkbox" id="pv-rtc" data-key="webRTCProtection">
+              <div class="pp-toggle-track"></div>
+              <div class="pp-toggle-thumb"></div>
+            </label>
+          </div>
+
+          <div class="pp-row">
+            <div class="pp-label">
+              <span class="pp-label-main">Fingerprint Protection</span>
+              <span class="pp-label-sub">Normalises Canvas, WebGL, AudioContext &amp; navigator APIs</span>
+            </div>
+            <label class="pp-toggle">
+              <input type="checkbox" id="pv-fp" data-key="fingerprintProtection">
+              <div class="pp-toggle-track"></div>
+              <div class="pp-toggle-thumb"></div>
+            </label>
+          </div>
+
+        </div>
+
+        <div class="pp-footer">
+          <button id="btn-clear-data">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h9M5 3V2h3v1M3.5 3l.5 8h5l.5-8"/>
+            </svg>
+            Clear All Browsing Data
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Download widget -->
+    <div id="download-widget">
+      <button id="btn-download" title="Video downloader — navigate to a video page first">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+             stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <line x1="8" y1="1" x2="8" y2="11"/>
+          <polyline points="4 7 8 11 12 7"/>
+          <line x1="2" y1="14" x2="14" y2="14"/>
+        </svg>
+        <span id="dl-badge" class="dl-badge" style="display:none">0</span>
+      </button>
+
+      <!-- Download panel — shown when btn-download is clicked -->
+      <div id="download-panel">
+        <div class="dl-header">
+          <span class="dl-header-title">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"
+                 stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px">
+              <line x1="6.5" y1="0.5" x2="6.5" y2="9"/>
+              <polyline points="3 5.5 6.5 9 10 5.5"/>
+              <line x1="1" y1="12" x2="12" y2="12"/>
+            </svg>
+            Video Downloader
+          </span>
+          <button id="dl-open-folder-btn" class="dl-open-btn" title="Open Downloads folder">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 3.5h10v7H1zM1 3.5l1.5-2h3L7 3.5"/>
+            </svg>
+            Open folder
+          </button>
+        </div>
+
+        <!-- Detection status row -->
+        <div id="dl-detect-row" class="dl-detect-row dl-no-video">
+          <span id="dl-detect-icon">⚠</span>
+          <span id="dl-detect-text">Navigate to a YouTube, TikTok, or Vimeo video</span>
+        </div>
+
+        <!-- Quality/format options (shown only when a video is detected) -->
+        <div class="dl-options" id="dl-options">
+          <div class="dl-opt-row">
+            <label class="dl-opt-label" for="dl-quality">Quality</label>
+            <select id="dl-quality" class="dl-select">
+              <option value="1080p">1080p HD</option>
+              <option value="720p" selected>720p HD (recommended)</option>
+              <option value="480p">480p</option>
+              <option value="360p">360p</option>
+              <option value="4k">4K Ultra HD</option>
+              <option value="webm">Best quality (WebM)</option>
+              <option value="audio">Audio only (MP3)</option>
+            </select>
+          </div>
+          <button id="dl-start-btn" class="dl-start-btn" disabled>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+                 stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <line x1="6" y1="0.5" x2="6" y2="8.5"/>
+              <polyline points="2.5 5 6 8.5 9.5 5"/>
+              <line x1="1" y1="11" x2="11" y2="11"/>
+            </svg>
+            Download
+          </button>
+        </div>
+
+        <!-- Open full manager link -->
+        <button id="dl-open-mgr-btn" class="dl-open-mgr-btn">
+          Open Download Manager &nbsp;<kbd>Ctrl+J</kbd>
+        </button>
+        <!-- Active downloads list -->
+        <div id="dl-list" class="dl-list"></div>
+      </div>
+    </div>
+
+    <!-- VPN / Proxy widget -->
+    <div id="vpn-widget">
+      <button id="btn-vpn" class="nav-btn" title="Proxy Manager — browse via proxy">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"
+             stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="7.5" cy="7.5" r="6.5"/>
+          <path d="M7.5 1 C5.5 4 5.5 11 7.5 14"/>
+          <path d="M7.5 1 C9.5 4 9.5 11 7.5 14"/>
+          <line x1="1" y1="7.5" x2="14" y2="7.5"/>
+        </svg>
+        <span id="vpn-dot" class="vpn-dot"></span>
+      </button>
+    </div>
+
     <!-- AI Assistant toggle -->
     <button id="btn-ai" class="nav-btn" title="Claude AI Assistant">
       <svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor">
@@ -157,10 +374,391 @@
 
 </div>
 
+<!-- Privacy UI -->
+<script>
+;(function () {
+  'use strict'
+
+  const api         = window.electronAPI
+  const btnPrivacy  = document.getElementById('btn-privacy')
+  const panel       = document.getElementById('privacy-panel')
+  const arcEl       = document.getElementById('prv-arc')
+  const scoreEl     = document.getElementById('prv-score')
+  const badge       = document.getElementById('pp-badge')
+  const clearBtn    = document.getElementById('btn-clear-data')
+
+  // Circumference of the arc circle (r=9): 2*π*9 ≈ 56.55
+  const CIRC = 56.55
+
+  // ── Arc & badge update ────────────────────────────────────────────────────
+
+  function updateScore(score) {
+    const s = Math.max(0, Math.min(100, score))
+    scoreEl.textContent = s
+    badge.textContent   = s + ' / 100'
+
+    // Arc: dashoffset = CIRC * (1 - score/100)
+    arcEl.setAttribute('stroke-dashoffset', (CIRC * (1 - s / 100)).toFixed(2))
+
+    // Colour thresholds
+    let color, cls
+    if      (s >= 90) { color = '#34d399'; cls = ''       }
+    else if (s >= 70) { color = '#fbbf24'; cls = 'amber'  }
+    else if (s >= 50) { color = '#f97316'; cls = 'orange' }
+    else              { color = '#f28b82'; cls = 'red'    }
+
+    arcEl.setAttribute('stroke', color)
+    badge.className = 'pp-score-badge' + (cls ? ' ' + cls : '')
+  }
+
+  // ── Load settings from main process ──────────────────────────────────────
+
+  async function loadSettings() {
+    try {
+      const { settings, score } = await api.privacyGetSettings()
+      updateScore(score)
+      // Populate toggles
+      document.querySelectorAll('.pp-toggle input[data-key]').forEach(cb => {
+        cb.checked = !!settings[cb.dataset.key]
+      })
+    } catch (_) {}
+  }
+
+  // ── Toggle change → save to main process ─────────────────────────────────
+
+  document.querySelectorAll('.pp-toggle input[data-key]').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      try {
+        const { score } = await api.privacySaveSettings({ [cb.dataset.key]: cb.checked })
+        updateScore(score)
+      } catch (_) {}
+    })
+  })
+
+  // ── Main process pushes score updates (e.g. after clear) ─────────────────
+
+  api.onPrivacyScoreUpdate(score => updateScore(score))
+
+  // ── Panel open / close ────────────────────────────────────────────────────
+
+  btnPrivacy.addEventListener('click', (e) => {
+    e.stopPropagation()
+    const open = panel.classList.toggle('open')
+    btnPrivacy.classList.toggle('panel-open', open)
+  })
+
+  document.addEventListener('click', (e) => {
+    if (!panel.contains(e.target) && e.target !== btnPrivacy) {
+      panel.classList.remove('open')
+      btnPrivacy.classList.remove('panel-open')
+    }
+  })
+
+  // ── Clear all browsing data ───────────────────────────────────────────────
+
+  clearBtn.addEventListener('click', async () => {
+    if (clearBtn.dataset.busy) return
+    const ok = confirm(
+      'Clear all browsing data?\n\nThis will delete:\n' +
+      '• Cookies\n• Cache\n• Local storage\n• Browsing history (this session)\n\nThis cannot be undone.'
+    )
+    if (!ok) return
+
+    clearBtn.dataset.busy = '1'
+    clearBtn.textContent  = 'Clearing…'
+
+    try {
+      await api.privacyClearData()
+      clearBtn.textContent = '✓ All data cleared'
+      clearBtn.classList.add('success')
+      setTimeout(() => {
+        clearBtn.innerHTML = `
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3h9M5 3V2h3v1M3.5 3l.5 8h5l.5-8"/>
+          </svg>
+          Clear All Browsing Data`
+        clearBtn.classList.remove('success')
+        delete clearBtn.dataset.busy
+      }, 2500)
+    } catch (e) {
+      clearBtn.textContent = 'Error — try again'
+      delete clearBtn.dataset.busy
+    }
+  })
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  loadSettings()
+
+})()
+</script>
+
+<!-- Download UI -->
+<script>
+;(function () {
+  'use strict'
+
+  const api          = window.electronAPI
+  const btnDownload  = document.getElementById('btn-download')
+  const panel        = document.getElementById('download-panel')
+  const detectRow    = document.getElementById('dl-detect-row')
+  const detectIcon   = document.getElementById('dl-detect-icon')
+  const detectText   = document.getElementById('dl-detect-text')
+  const dlOptions    = document.getElementById('dl-options')
+  const dlQuality    = document.getElementById('dl-quality')
+  const dlStartBtn   = document.getElementById('dl-start-btn')
+  const dlList       = document.getElementById('dl-list')
+  const dlBadge      = document.getElementById('dl-badge')
+  const openFolderBtn = document.getElementById('dl-open-folder-btn')
+
+  let currentUrl      = ''
+  let currentPlatform = ''
+  let activeCount     = 0
+
+  // ── Badge (shows number of active downloads) ──────────────────────────────
+
+  function setActiveCount(n) {
+    activeCount = n
+    dlBadge.textContent = n
+    dlBadge.style.display = n > 0 ? 'flex' : 'none'
+  }
+
+  // ── Detection status row ──────────────────────────────────────────────────
+
+  function setDetected(platform) {
+    currentPlatform = platform || ''
+    if (platform) {
+      detectRow.className  = 'dl-detect-row dl-has-video'
+      detectIcon.textContent = '✓'
+      detectText.textContent = platform + ' video detected — ready to download'
+      dlStartBtn.disabled    = false
+    } else {
+      detectRow.className  = 'dl-detect-row dl-no-video'
+      detectIcon.textContent = '⚠'
+      detectText.textContent = 'Navigate to a YouTube, TikTok, or Vimeo video'
+      dlStartBtn.disabled    = true
+    }
+  }
+
+  // ── URL change: check if current page has a downloadable video ────────────
+
+  async function checkUrl(url) {
+    currentUrl = url || ''
+    if (!url || url.endsWith('newtab.html') || !url.startsWith('http')) {
+      setDetected(null); return
+    }
+    try {
+      const { supported, platform } = await api.dlCheck(url)
+      setDetected(supported ? platform : null)
+    } catch (_) {
+      setDetected(null)
+    }
+  }
+
+  // Listen for tab navigation events dispatched by renderer.js
+  document.addEventListener('url-changed', e => checkUrl(e.detail?.url))
+
+  // ── Panel open / close ────────────────────────────────────────────────────
+
+  btnDownload.addEventListener('click', e => {
+    e.stopPropagation()
+    const open = panel.classList.toggle('open')
+    btnDownload.classList.toggle('panel-open', open)
+  })
+
+  document.addEventListener('click', e => {
+    if (!panel.contains(e.target) && e.target !== btnDownload) {
+      panel.classList.remove('open')
+      btnDownload.classList.remove('panel-open')
+    }
+  })
+
+  // ── Open Downloads folder ─────────────────────────────────────────────────
+
+  openFolderBtn.addEventListener('click', () => api.dlOpenFolder(''))
+
+  // ── Start download ────────────────────────────────────────────────────────
+
+  dlStartBtn.addEventListener('click', async () => {
+    if (!currentUrl || dlStartBtn.dataset.busy) return
+    dlStartBtn.dataset.busy = '1'
+    dlStartBtn.textContent  = 'Starting…'
+
+    const quality = dlQuality.value
+    const format  = quality === 'audio' ? 'audio' : (quality === 'webm' ? 'webm' : 'mp4')
+
+    try {
+      const { id } = await api.dlStart({ url: currentUrl, quality, format })
+      addDownloadItem(id, currentUrl)
+      setActiveCount(activeCount + 1)
+    } catch (err) {
+      addErrorMsg('Could not start: ' + (err.message || 'unknown error'))
+    }
+
+    dlStartBtn.dataset.busy = ''
+    dlStartBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+           stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <line x1="6" y1="0.5" x2="6" y2="8.5"/>
+        <polyline points="2.5 5 6 8.5 9.5 5"/>
+        <line x1="1" y1="11" x2="11" y2="11"/>
+      </svg>
+      Download`
+  })
+
+  // ── Active download list item ─────────────────────────────────────────────
+
+  function addDownloadItem(id, url) {
+    const short = url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 50)
+    const item  = document.createElement('div')
+    item.className    = 'dl-item'
+    item.dataset.dlId = id
+    item.innerHTML = `
+      <div class="dl-item-top">
+        <span class="dl-item-name" id="dl-name-${id}">${escHtml(short)}</span>
+        <button class="dl-cancel-btn" title="Cancel download">✕</button>
+      </div>
+      <div class="dl-bar-wrap">
+        <div class="dl-bar" id="dl-bar-${id}" style="width:0%"></div>
+      </div>
+      <div class="dl-item-status" id="dl-status-${id}">Waiting for yt-dlp…</div>`
+
+    item.querySelector('.dl-cancel-btn').addEventListener('click', () => {
+      api.dlCancel(id)
+      item.remove()
+      setActiveCount(Math.max(0, activeCount - 1))
+    })
+
+    dlList.appendChild(item)
+    // Auto-open panel so user sees progress
+    panel.classList.add('open')
+    btnDownload.classList.add('panel-open')
+  }
+
+  function addErrorMsg(msg) {
+    const div = document.createElement('div')
+    div.className = 'dl-error-msg'
+    div.textContent = '⚠ ' + msg
+    dlList.appendChild(div)
+    setTimeout(() => div.remove(), 6000)
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  }
+
+  // ── Open Manager button ───────────────────────────────────────────────────
+
+  document.getElementById('dl-open-mgr-btn').addEventListener('click', () => {
+    api.openDownloadManager()
+  })
+
+  // ── IPC: unified dl-update ────────────────────────────────────────────────
+
+  const counted = new Set()
+
+  api.onDlUpdate(dl => {
+    // Create item on first appearance
+    let item = dlList.querySelector('[data-dl-id="' + dl.id + '"]')
+    if (!item && !['cancelled','error'].includes(dl.status)) {
+      const short = (dl.url || '').replace(/^https?:\/\/(www\.)?/, '').slice(0, 50)
+      item = document.createElement('div')
+      item.className    = 'dl-item'
+      item.dataset.dlId = dl.id
+      item.innerHTML = `
+        <div class="dl-item-top">
+          <span class="dl-item-name" id="dl-name-${dl.id}">${escHtml(short)}</span>
+          <button class="dl-cancel-btn" title="Cancel">✕</button>
+        </div>
+        <div class="dl-bar-wrap"><div class="dl-bar" id="dl-bar-${dl.id}" style="width:0%"></div></div>
+        <div class="dl-item-status" id="dl-status-${dl.id}">Starting…</div>`
+      item.querySelector('.dl-cancel-btn').addEventListener('click', () => {
+        api.dlCancel(dl.id)
+        item.remove()
+        if (counted.has(dl.id)) { counted.delete(dl.id); setActiveCount(Math.max(0, activeCount - 1)) }
+      })
+      dlList.appendChild(item)
+      panel.classList.add('open')
+      btnDownload.classList.add('panel-open')
+      if (!counted.has(dl.id)) { counted.add(dl.id); setActiveCount(activeCount + 1) }
+    }
+    if (!item) return
+
+    const bar = document.getElementById('dl-bar-' + dl.id)
+    const st  = document.getElementById('dl-status-' + dl.id)
+    const nm  = document.getElementById('dl-name-'   + dl.id)
+
+    if (nm && dl.filename) nm.textContent = dl.filename
+    if (bar) bar.style.width = Math.min(100, dl.pct || 0).toFixed(1) + '%'
+
+    if (dl.status === 'downloading') {
+      let txt = (dl.pct || 0).toFixed(0) + '%'
+      if (dl.speed) txt += '  ' + dl.speed
+      if (dl.eta)   txt += '  ETA ' + dl.eta
+      if (st) { st.textContent = txt; st.style.color = '' }
+    } else if (dl.status === 'paused') {
+      if (st) { st.textContent = '⏸ Paused — ' + (dl.pct || 0).toFixed(0) + '%'; st.style.color = '#fbbf24' }
+    } else if (dl.status === 'complete') {
+      if (bar) { bar.style.width = '100%'; bar.classList.add('done') }
+      if (st)  { st.textContent = '✓ Complete — saved to Downloads'; st.style.color = '#81c995' }
+      const cb = item.querySelector('.dl-cancel-btn')
+      if (cb) { cb.textContent = '✕'; cb.title = 'Remove'; cb.onclick = () => item.remove() }
+      if (counted.has(dl.id)) { counted.delete(dl.id); setActiveCount(Math.max(0, activeCount - 1)) }
+    } else if (dl.status === 'error') {
+      if (bar) bar.classList.add('error')
+      if (st)  { st.textContent = '⚠ ' + (dl.error || 'Failed'); st.style.color = '#f28b82' }
+      const cb = item.querySelector('.dl-cancel-btn')
+      if (cb) { cb.textContent = '✕'; cb.onclick = () => item.remove() }
+      if (counted.has(dl.id)) { counted.delete(dl.id); setActiveCount(Math.max(0, activeCount - 1)) }
+    } else if (dl.status === 'cancelled') {
+      item.remove()
+      if (counted.has(dl.id)) { counted.delete(dl.id); setActiveCount(Math.max(0, activeCount - 1)) }
+    }
+  })
+
+})()
+</script>
+
+<!-- Proxy / VPN widget -->
+<script>
+;(function () {
+  'use strict'
+  const api    = window.electronAPI
+  const btnVpn = document.getElementById('btn-vpn')
+  const vpnDot = document.getElementById('vpn-dot')
+
+  function applyProxyState(s) {
+    if (s.enabled && s.currentProxy) {
+      vpnDot.className = 'vpn-dot on'
+      btnVpn.title     = 'Proxy: Connected (' + s.currentProxy.ip + ') — click to manage'
+    } else {
+      vpnDot.className = 'vpn-dot off'
+      btnVpn.title     = 'Proxy Manager — browse via proxy'
+    }
+  }
+
+  btnVpn.addEventListener('click', () => api.openProxyManager())
+
+  api.onProxyState(applyProxyState)
+
+  api.proxyGetState().then(applyProxyState).catch(() => {})
+})()
+</script>
+
 <!-- Main browser logic -->
 <script src="renderer.js"></script>
-<!-- AI sidebar -->
+<!-- Free AI config — must load before everything else -->
+<script src="ai-config.js"></script>
+<!-- AI sidebar (free APIs, no key needed) -->
 <script src="ai-sidebar.js"></script>
+<!-- Full-page translator: LibreTranslate + AI fallback (adds toolbar button) -->
+<script src="translator.js"></script>
+<!-- Reading mode: clean article view + AI summary (adds toolbar button) -->
+<script src="reading-mode.js"></script>
+<!-- Context menu AI tools + smart URL suggestions -->
+<script src="ai-tools.js"></script>
 
 <!-- Ad blocker UI — small standalone script, no changes to renderer.js needed -->
 <script>
