@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, globalShortcut, net } = require('electron')
+const { app, BrowserWindow, ipcMain, screen, globalShortcut, net, shell, webContents } = require('electron')
 const path      = require('path')
 const fs        = require('fs')
 const adblocker  = require('./adblocker')    // ← ad blocker module
@@ -107,6 +107,26 @@ function createWindow() {
 
   // ── Initialise proxy / VPN engine ─────────────────────────────────────────
   proxy.init(win)
+
+  // ── Context menu: Save page as PDF ────────────────────────────────────────
+  ipcMain.handle('ctx-save-pdf', async (_, wcId) => {
+    const wc = webContents.fromId(wcId)
+    if (!wc) return
+    try {
+      const data = await wc.printToPDF({ printBackground: true, margins: { marginType: 'default' } })
+      const fp   = path.join(app.getPath('downloads'), 'page-' + Date.now() + '.pdf')
+      fs.writeFileSync(fp, data)
+      shell.openPath(fp)
+    } catch (e) {
+      console.error('[ctx-save-pdf]', e.message)
+    }
+  })
+
+  // ── Context menu: Inspect element ──────────────────────────────────────────
+  ipcMain.handle('ctx-inspect', (_, { wcId, x, y }) => {
+    const wc = webContents.fromId(wcId)
+    if (wc) wc.inspectElement(Math.round(x), Math.round(y))
+  })
 
   // ── Settings window ────────────────────────────────────────────────────────
   ipcMain.handle('open-settings', () => {

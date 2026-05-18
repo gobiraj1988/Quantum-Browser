@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Context Menu — Design Preview</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #13131a;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      padding: 40px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .preview-col { display: flex; flex-direction: column; gap: 8px; }
+    .preview-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding-left: 4px;
+    }
+    /* Override fixed positioning for preview */
+    #ctx-menu, .ctx-menu-preview {
+      position: relative !important;
+      display: block !important;
+      animation: none !important;
+      left: auto !important;
+      top: auto !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE CONTEXT (empty area right-click) -->
+  <div class="preview-col">
+    <div class="preview-label">Page context</div>
+    <div id="ctx-menu" class="ctx-menu-preview">
+      <div class="ctx-section-header">This Page</div>
+      <button class="ctx-item ctx-item-ai">
+        <span class="ctx-icon">✦</span>
+        <span class="ctx-label-text">Summarize with AI</span>
+      </button>
+      <button class="ctx-item ctx-item-blue">
+        <span class="ctx-icon">🌐</span>
+        <span class="ctx-label-text">Translate this page</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">⬇</span>
+        <span class="ctx-label-text">Save page as PDF</span>
+      </button>
+      <div class="ctx-sep"></div>
+      <button class="ctx-item">
+        <span class="ctx-icon">&lt;/&gt;</span>
+        <span class="ctx-label-text">View page source</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">🔧</span>
+        <span class="ctx-label-text">Inspect element</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- LINK CONTEXT -->
+  <div class="preview-col">
+    <div class="preview-label">Link context</div>
+    <div class="ctx-menu-preview" style="background:#26272b;border:1px solid rgba(255,255,255,0.11);border-radius:11px;padding:5px;min-width:220px;">
+      <button class="ctx-item ctx-item-green">
+        <span class="ctx-icon">↗</span>
+        <span class="ctx-label-text">Open in new tab</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">🔗</span>
+        <span class="ctx-label-text">Copy link address</span>
+      </button>
+      <div class="ctx-sep"></div>
+      <div class="ctx-section-header">This Page</div>
+      <button class="ctx-item ctx-item-ai">
+        <span class="ctx-icon">✦</span>
+        <span class="ctx-label-text">Summarize with AI</span>
+      </button>
+      <button class="ctx-item ctx-item-blue">
+        <span class="ctx-icon">🌐</span>
+        <span class="ctx-label-text">Translate this page</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">⬇</span>
+        <span class="ctx-label-text">Save page as PDF</span>
+      </button>
+      <div class="ctx-sep"></div>
+      <button class="ctx-item">
+        <span class="ctx-icon">&lt;/&gt;</span>
+        <span class="ctx-label-text">View page source</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">🔧</span>
+        <span class="ctx-label-text">Inspect element</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- IMAGE CONTEXT -->
+  <div class="preview-col">
+    <div class="preview-label">Image context</div>
+    <div class="ctx-menu-preview" style="background:#26272b;border:1px solid rgba(255,255,255,0.11);border-radius:11px;padding:5px;min-width:220px;">
+      <div class="ctx-section-header">Image</div>
+      <button class="ctx-item">
+        <span class="ctx-icon">🔗</span>
+        <span class="ctx-label-text">Copy image address</span>
+      </button>
+      <button class="ctx-item ctx-item-green">
+        <span class="ctx-icon">↗</span>
+        <span class="ctx-label-text">Open image in new tab</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">⬇</span>
+        <span class="ctx-label-text">Download image</span>
+      </button>
+      <div class="ctx-sep"></div>
+      <button class="ctx-item ctx-item-ai">
+        <span class="ctx-icon">✦</span>
+        <span class="ctx-label-text">Summarize with AI</span>
+      </button>
+      <button class="ctx-item ctx-item-blue">
+        <span class="ctx-icon">🌐</span>
+        <span class="ctx-label-text">Translate this page</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">⬇</span>
+        <span class="ctx-label-text">Save page as PDF</span>
+      </button>
+      <div class="ctx-sep"></div>
+      <button class="ctx-item">
+        <span class="ctx-icon">&lt;/&gt;</span>
+        <span class="ctx-label-text">View page source</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">🔧</span>
+        <span class="ctx-label-text">Inspect element</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- VIDEO CONTEXT -->
+  <div class="preview-col">
+    <div class="preview-label">Video context</div>
+    <div class="ctx-menu-preview" style="background:#26272b;border:1px solid rgba(255,255,255,0.11);border-radius:11px;padding:5px;min-width:220px;">
+      <div class="ctx-section-header">Video</div>
+      <button class="ctx-item ctx-item-green">
+        <span class="ctx-icon">⬇</span>
+        <span class="ctx-label-text">Download video</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">♪</span>
+        <span class="ctx-label-text">Download audio only</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">🖼</span>
+        <span class="ctx-label-text">Download thumbnail</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">⛶</span>
+        <span class="ctx-label-text">Picture in Picture</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">🔗</span>
+        <span class="ctx-label-text">Copy video address</span>
+      </button>
+      <div class="ctx-sep"></div>
+      <button class="ctx-item ctx-item-ai">
+        <span class="ctx-icon">✦</span>
+        <span class="ctx-label-text">Summarize with AI</span>
+      </button>
+      <button class="ctx-item ctx-item-blue">
+        <span class="ctx-icon">🌐</span>
+        <span class="ctx-label-text">Translate this page</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">⬇</span>
+        <span class="ctx-label-text">Save page as PDF</span>
+      </button>
+      <div class="ctx-sep"></div>
+      <button class="ctx-item">
+        <span class="ctx-icon">&lt;/&gt;</span>
+        <span class="ctx-label-text">View page source</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">🔧</span>
+        <span class="ctx-label-text">Inspect element</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- TEXT SELECTION CONTEXT -->
+  <div class="preview-col">
+    <div class="preview-label">Text selected</div>
+    <div class="ctx-menu-preview" style="background:#26272b;border:1px solid rgba(255,255,255,0.11);border-radius:11px;padding:5px;min-width:220px;">
+      <button class="ctx-item">
+        <span class="ctx-icon">🔍</span>
+        <span class="ctx-label-text">Search "Hello world" on Google</span>
+      </button>
+      <button class="ctx-item ctx-item-ai">
+        <span class="ctx-icon">✦</span>
+        <span class="ctx-label-text">Explain with AI</span>
+      </button>
+      <button class="ctx-item ctx-item-ai">
+        <span class="ctx-icon">✓</span>
+        <span class="ctx-label-text">Check grammar</span>
+      </button>
+      <div class="ctx-sep"></div>
+      <button class="ctx-item ctx-item-ai">
+        <span class="ctx-icon">✦</span>
+        <span class="ctx-label-text">Summarize with AI</span>
+      </button>
+      <button class="ctx-item ctx-item-blue">
+        <span class="ctx-icon">🌐</span>
+        <span class="ctx-label-text">Translate this page</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">⬇</span>
+        <span class="ctx-label-text">Save page as PDF</span>
+      </button>
+      <div class="ctx-sep"></div>
+      <button class="ctx-item">
+        <span class="ctx-icon">&lt;/&gt;</span>
+        <span class="ctx-label-text">View page source</span>
+      </button>
+      <button class="ctx-item">
+        <span class="ctx-icon">🔧</span>
+        <span class="ctx-label-text">Inspect element</span>
+      </button>
+    </div>
+  </div>
+
+</body>
+</html>

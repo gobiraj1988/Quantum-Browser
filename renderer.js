@@ -68,6 +68,7 @@ function normalizeUrl(raw) {
   const input = raw.trim()
   if (!input) return HOME_URL
   if (/^https?:\/\//i.test(input)) return input
+  if (/^\/\//.test(input)) return 'https:' + input
   if (/^[\w-]+(\.[\w-]+)+/.test(input) && !input.includes(' ')) return 'https://' + input
   return 'https://www.google.com/search?q=' + encodeURIComponent(input)
 }
@@ -214,6 +215,7 @@ function syncToolbarToTab(tab) {
   else { setToolbarLoading(false); updateNavButtons() }
   document.title = tab.title ? `${tab.title} — MyBrowser` : 'MyBrowser'
   statusText.textContent = tab.isLoading ? 'Loading...' : 'Ready'
+  document.dispatchEvent(new CustomEvent('url-changed', { detail: { url: tab.url || '' } }))
 }
 
 function setToolbarLoading(loading) {
@@ -284,14 +286,22 @@ function bindWebviewEvents(tab) {
   wv.addEventListener('did-navigate', (e) => {
     tab.url    = e.url
     tab.favicon = null
+    trackHistory(e.url)
     updateTabEl(tab.id)
-    if (tab.id === activeTabId) { updateUrlBarFromTab(tab); updateNavButtons() }
+    if (tab.id === activeTabId) {
+      updateUrlBarFromTab(tab)
+      updateNavButtons()
+      document.dispatchEvent(new CustomEvent('url-changed', { detail: { url: e.url } }))
+    }
   })
 
   wv.addEventListener('did-navigate-in-page', (e) => {
     if (!e.isMainFrame) return
     tab.url = e.url
-    if (tab.id === activeTabId) updateUrlBarFromTab(tab)
+    if (tab.id === activeTabId) {
+      updateUrlBarFromTab(tab)
+      document.dispatchEvent(new CustomEvent('url-changed', { detail: { url: e.url } }))
+    }
   })
 
   wv.addEventListener('page-title-updated', (e) => {
@@ -464,3 +474,4 @@ document.addEventListener('keydown', (e) => {
 // ── Start ─────────────────────────────────────────────────────────────────────
 
 createTab(NEWTAB_URL)
+window._newTab = createTab
