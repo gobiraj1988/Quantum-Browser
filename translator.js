@@ -126,7 +126,26 @@ async function libreTranslate (text, targetCode, sourceCode = 'auto') {
     } catch (_) { continue }
     finally { clearTimeout(timer) }
   }
-  return null   // all endpoints failed
+  return null   // all LibreTranslate endpoints failed
+}
+
+// ── MyMemory API fallback (no key needed) ─────────────────────────────────────
+
+async function myMemoryTranslate (text, targetCode, sourceCode = 'auto') {
+  if (text.length > 500) return null  // MyMemory limit ~500 chars per call
+  const langPair = (sourceCode === 'auto' ? 'auto' : sourceCode) + '|' + targetCode
+  const ctrl     = new AbortController()
+  const timer    = setTimeout(() => ctrl.abort(), 10000)
+  try {
+    const url = 'https://api.mymemory.translated.net/get?q=' +
+      encodeURIComponent(text) + '&langpair=' + encodeURIComponent(langPair)
+    const res  = await fetch(url, { signal: ctrl.signal })
+    if (!res.ok) return null
+    const data = await res.json()
+    const out  = data.responseData?.translatedText
+    return (out && out !== text) ? out : null
+  } catch (_) { return null }
+  finally { clearTimeout(timer) }
 }
 
 // ── AI fallback translation for a single chunk ────────────────────────────────
@@ -164,6 +183,7 @@ async function translateFull (text, targetCode, langName, onProgress) {
   for (let i = 0; i < chunks.length; i++) {
     onProgress?.(Math.round(10 + (i / chunks.length) * 78))
     let out = await libreTranslate(chunks[i], targetCode)
+    if (!out) out = await myMemoryTranslate(chunks[i], targetCode)
     if (!out) {
       try { out = await aiTranslateChunk(chunks[i], langName) } catch (_) { out = chunks[i] }
     }
