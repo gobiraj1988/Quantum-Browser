@@ -1,7 +1,10 @@
 const { app, BrowserWindow, ipcMain, screen, globalShortcut, net } = require('electron')
 const path      = require('path')
 const fs        = require('fs')
-const adblocker = require('./adblocker')   // ← ad blocker module
+const adblocker  = require('./adblocker')    // ← ad blocker module
+const privacy    = require('./privacy')      // ← privacy engine
+const downloader = require('./downloader')   // ← video downloader
+const proxy      = require('./proxy')        // ← proxy / VPN engine
 
 // ─── Window State Persistence ─────────────────────────────────────────────────
 
@@ -96,6 +99,15 @@ function createWindow() {
   // ── Initialise ad blocker ──────────────────────────────────────────────────
   adblocker.init(win)
 
+  // ── Initialise privacy engine ──────────────────────────────────────────────
+  privacy.init(win)
+
+  // ── Initialise video downloader ────────────────────────────────────────────
+  downloader.init(win)
+
+  // ── Initialise proxy / VPN engine ─────────────────────────────────────────
+  proxy.init(win)
+
   // ── Settings window ────────────────────────────────────────────────────────
   ipcMain.handle('open-settings', () => {
     const existing = BrowserWindow.getAllWindows().find(w =>
@@ -125,61 +137,9 @@ function createWindow() {
 }
 
 // ─── AI Assistant ─────────────────────────────────────────────────────────────
-
-const AI_SETTINGS_FILE = path.join(app.getPath('userData'), 'ai-settings.json')
-
-function loadAiSettings() {
-  try { return JSON.parse(fs.readFileSync(AI_SETTINGS_FILE, 'utf8')) }
-  catch { return { apiKey: '', model: 'claude-haiku-4-5-20251001' } }
-}
-
-function saveAiSettings(data) {
-  try { fs.writeFileSync(AI_SETTINGS_FILE, JSON.stringify(data), 'utf8') }
-  catch (_) {}
-}
-
-ipcMain.handle('ai-get-key', () => loadAiSettings())
-
-ipcMain.handle('ai-save-key', (_, data) => { saveAiSettings(data) })
-
-ipcMain.handle('ai-chat', (_, { apiKey, model, system, messages }) => {
-  return new Promise((resolve, reject) => {
-    if (!apiKey) { reject(new Error('No API key — click the key icon to add yours.')); return }
-
-    const body = Buffer.from(JSON.stringify({
-      model:      model || 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      system,
-      messages,
-    }))
-
-    const req = net.request({
-      method: 'POST',
-      url:    'https://api.anthropic.com/v1/messages',
-    })
-    req.setHeader('x-api-key',         apiKey)
-    req.setHeader('anthropic-version', '2023-06-01')
-    req.setHeader('content-type',      'application/json')
-    req.setHeader('content-length',    String(body.length))
-
-    let raw = ''
-    req.on('response', res => {
-      res.on('data',  c => { raw += c.toString() })
-      res.on('end',   () => {
-        try {
-          const r = JSON.parse(raw)
-          if (r.error)   { reject(new Error(r.error.message)); return }
-          if (r.content) { resolve(r.content[0].text); return }
-          reject(new Error('Unexpected API response format'))
-        } catch { reject(new Error('Failed to parse API response')) }
-      })
-      res.on('error', reject)
-    })
-    req.on('error', reject)
-    req.write(body)
-    req.end()
-  })
-})
+// AI runs entirely in the renderer — no IPC, no user API key required.
+// Providers (auto-fallback): Pollinations AI → HuggingFace → Groq (optional free key).
+// See ai-config.js to optionally add a free Groq key for the fastest model.
 
 // ─── App Lifecycle ────────────────────────────────────────────────────────────
 
@@ -204,6 +164,9 @@ app.whenReady().then(() => {
 
   // URL bar focus
   globalShortcut.register('CommandOrControl+L', () => sendIfOurs('focus-url-bar'))
+
+  // Download manager (Ctrl+J — works even when browser isn't focused)
+  globalShortcut.register('CommandOrControl+J', () => downloader.openManager())
 })
 
 app.on('will-quit',         () => globalShortcut.unregisterAll())

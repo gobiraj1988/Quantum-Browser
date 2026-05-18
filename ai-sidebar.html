@@ -1,363 +1,106 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Claude AI Assistant</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg:     #1a1b1e;
-      --bg2:    #1e1f24;
-      --bg3:    #2d2e32;
-      --hover:  #3c4043;
-      --purple: #c084fc;
-      --accent: #8ab4f8;
-      --text:   #e8eaed;
-      --muted:  #9aa0a6;
-      --border: rgba(255,255,255,0.08);
-      --user-bg: rgba(138, 180, 248, 0.15);
-      --ai-bg:   rgba(255,255,255,0.05);
-    }
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      overflow: hidden;
-    }
-    body { display: flex; flex-direction: column; }
-
-    /* ── Header ── */
-    .ai-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 14px 11px;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg2);
-      flex-shrink: 0;
-    }
-    .ai-header-icon { color: var(--purple); flex-shrink: 0; }
-    .ai-header-title { font-size: 13px; font-weight: 600; flex: 1; }
-    .ai-model-select {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      color: var(--muted);
-      font-size: 10.5px;
-      padding: 2px 6px;
-      cursor: pointer;
-      outline: none;
-    }
-    .ai-header-btn {
-      width: 24px; height: 24px;
-      border: none; background: transparent;
-      color: var(--muted); border-radius: 4px;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-size: 13px; transition: background 0.1s, color 0.1s;
-    }
-    .ai-header-btn:hover { background: var(--hover); color: var(--text); }
-
-    /* ── API key section ── */
-    .ai-key-section {
-      padding: 14px;
-      flex-direction: column;
-      gap: 10px;
-      background: rgba(192,132,252,0.05);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      display: none;
-    }
-    .ai-key-section.visible { display: flex; }
-    .ai-key-section p { font-size: 12px; color: var(--muted); line-height: 1.5; }
-    .ai-key-row { display: flex; gap: 8px; }
-    .ai-key-input {
-      flex: 1;
-      background: var(--bg3); border: 1px solid var(--border);
-      border-radius: 6px; padding: 6px 10px;
-      color: var(--text); font-size: 12px; outline: none;
-      font-family: monospace;
-    }
-    .ai-key-input:focus { border-color: var(--purple); }
-    .ai-key-save {
-      background: var(--purple); color: #000; border: none;
-      border-radius: 6px; padding: 6px 12px;
-      font-size: 12px; font-weight: 600; cursor: pointer;
-    }
-    .ai-key-save:hover { opacity: 0.88; }
-
-    /* ── Chat area ── */
-    .ai-chat-area {
-      flex: 1; min-height: 0;
-      overflow-y: auto; overflow-x: hidden;
-      padding: 12px 14px;
-      display: flex; flex-direction: column; gap: 12px;
-    }
-    .ai-chat-area::-webkit-scrollbar { width: 4px; }
-    .ai-chat-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-
-    /* ── Welcome ── */
-    .ai-welcome {
-      display: flex; flex-direction: column;
-      align-items: center; gap: 10px;
-      padding: 30px 14px; color: var(--muted); text-align: center;
-    }
-    .ai-welcome-icon { font-size: 28px; color: var(--purple); opacity: 0.6; }
-    .ai-welcome p { font-size: 12px; line-height: 1.6; }
-
-    /* ── Messages ── */
-    .ai-msg { display: flex; flex-direction: column; gap: 4px; }
-    .ai-msg-user .ai-msg-bubble {
-      align-self: flex-end;
-      background: var(--user-bg); border: 1px solid rgba(138,180,248,0.2);
-      border-radius: 12px 12px 3px 12px;
-      padding: 8px 11px; max-width: 88%;
-      font-size: 12.5px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.55;
-    }
-    .ai-msg-ai .ai-msg-bubble {
-      align-self: flex-start;
-      background: var(--ai-bg); border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 3px 12px 12px 12px;
-      padding: 8px 11px; max-width: 96%;
-      font-size: 12.5px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.6;
-    }
-    .ai-msg-error .ai-msg-bubble {
-      align-self: flex-start;
-      background: rgba(242,139,130,0.1); border: 1px solid rgba(242,139,130,0.25);
-      border-radius: 6px; padding: 8px 11px;
-      font-size: 12px; color: #f28b82; white-space: pre-wrap;
-    }
-    .ai-copy-btn {
-      align-self: flex-start; background: transparent; border: none;
-      color: var(--muted); font-size: 10.5px; cursor: pointer;
-      padding: 1px 4px; border-radius: 3px; margin-left: 2px;
-      transition: color 0.1s, background 0.1s;
-    }
-    .ai-copy-btn:hover { background: var(--hover); color: var(--text); }
-
-    /* ── Typing indicator ── */
-    .ai-typing .ai-msg-bubble { padding: 10px 14px; }
-    .ai-dots { display: flex; gap: 4px; align-items: center; }
-    .ai-dots span {
-      width: 6px; height: 6px; background: var(--purple); border-radius: 50%;
-      animation: aiDot 1.1s infinite ease-in-out; opacity: 0.7;
-    }
-    .ai-dots span:nth-child(2) { animation-delay: 0.18s; }
-    .ai-dots span:nth-child(3) { animation-delay: 0.36s; }
-    @keyframes aiDot {
-      0%,60%,100% { transform: scale(0.75); opacity: 0.4; }
-      30%          { transform: scale(1);    opacity: 1;   }
-    }
-
-    /* ── Quick actions ── */
-    .ai-actions { padding: 10px 14px 0; flex-shrink: 0; }
-    .ai-summarize-btn {
-      width: 100%; background: rgba(192,132,252,0.12);
-      border: 1px solid rgba(192,132,252,0.25); border-radius: 8px;
-      color: var(--purple); font-size: 12px; font-weight: 500;
-      padding: 8px 12px; cursor: pointer; text-align: left;
-      transition: background 0.12s; display: flex; align-items: center; gap: 6px;
-    }
-    .ai-summarize-btn:hover:not(:disabled) { background: rgba(192,132,252,0.2); }
-    .ai-summarize-btn:disabled { opacity: 0.4; cursor: default; }
-
-    /* ── Input row ── */
-    .ai-input-row {
-      display: flex; align-items: flex-end; gap: 8px;
-      padding: 10px 14px 12px; border-top: 1px solid var(--border); flex-shrink: 0;
-    }
-    .ai-input {
-      flex: 1; min-height: 38px; max-height: 120px;
-      background: var(--bg3); border: 1px solid var(--border);
-      border-radius: 8px; padding: 8px 11px;
-      color: var(--text); font-size: 12.5px; resize: none; outline: none;
-      font-family: inherit; line-height: 1.45;
-      transition: border-color 0.15s; overflow-y: auto;
-    }
-    .ai-input:focus { border-color: var(--purple); }
-    .ai-input::placeholder { color: #555; }
-    .ai-send-btn {
-      width: 34px; height: 34px; background: var(--purple); border: none;
-      border-radius: 8px; color: #000; font-size: 16px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      transition: opacity 0.12s;
-    }
-    .ai-send-btn:hover:not(:disabled) { opacity: 0.88; }
-    .ai-send-btn:disabled { opacity: 0.35; cursor: default; }
-  </style>
-</head>
-<body>
-
-<!-- Header -->
+<!-- AI Sidebar — injected into #main-area by ai-sidebar.js -->
 <div class="ai-header">
-  <svg class="ai-header-icon" width="16" height="16" viewBox="0 0 15 15" fill="currentColor">
-    <path d="M7.5 0.5 L8.9 5.3 L13.8 5.4 L9.9 8.4 L11.4 13.2 L7.5 10.2 L3.6 13.2 L5.1 8.4 L1.2 5.4 L6.1 5.3 Z"/>
+  <svg class="ai-header-icon" width="16" height="16" viewBox="0 0 16 16" fill="none"
+       stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="8,1 10,6 15,6.5 11,10 12.5,15 8,12.5 3.5,15 5,10 1,6.5 6,6"/>
   </svg>
-  <span class="ai-header-title">Claude AI</span>
-  <select class="ai-model-select" id="ai-model-select">
-    <option value="claude-haiku-4-5-20251001">Haiku (fast)</option>
-    <option value="claude-sonnet-4-6">Sonnet</option>
-    <option value="claude-opus-4-7">Opus (powerful)</option>
-  </select>
-  <button class="ai-header-btn" id="ai-key-btn" title="API key settings">
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-      <circle cx="5" cy="8" r="3"/><path d="M7.5 5.5 L11 2 M9 2 L11 2 L11 4"/>
-    </svg>
-  </button>
-  <button class="ai-header-btn" id="ai-clear-btn" title="Clear chat">
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <span class="ai-header-title">AI Assistant</span>
+  <span class="ai-provider-badge" id="ai-provider-badge">Free AI</span>
+  <button class="ai-header-btn" id="ai-clear-btn" title="Clear chat history">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor"
+         stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
       <path d="M2 3h9M5 3V2h3v1M3.5 3l.5 8h5l.5-8"/>
     </svg>
   </button>
-  <button class="ai-header-btn" id="ai-close-btn" title="Close">✕</button>
+  <button class="ai-header-btn" id="ai-close-btn" title="Close sidebar">✕</button>
 </div>
 
-<!-- API Key section -->
-<div class="ai-key-section visible" id="ai-key-section">
-  <p>Enter your <strong style="color:#c084fc">Anthropic API key</strong> to activate the AI assistant.</p>
-  <div class="ai-key-row">
-    <input class="ai-key-input" id="ai-key-input" type="password" placeholder="sk-ant-api03-...">
-    <button class="ai-key-save" id="ai-key-save-btn">Save</button>
-  </div>
-</div>
-
-<!-- Chat messages -->
-<div class="ai-chat-area" id="ai-chat-area">
-  <div class="ai-welcome">
-    <div class="ai-welcome-icon">✦</div>
-    <p>Ask me anything about the current page, or click <strong>Summarize this page</strong> to get started.</p>
-  </div>
-</div>
-
-<!-- Quick action -->
+<!-- Summarize button — one click, no typing needed -->
 <div class="ai-actions">
   <button class="ai-summarize-btn" id="ai-summarize-btn">
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M2 3h9M2 6h7M2 9h5"/>
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round">
+      <path d="M1 2.5h11M1 6h8M1 9.5h5"/>
     </svg>
     Summarize this page
   </button>
 </div>
 
-<!-- Input row -->
+<!-- Quick action tool buttons -->
+<div class="ai-tools-grid">
+  <button class="ai-tool-btn" id="ai-facts-btn" title="List key facts from this page">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round">
+      <circle cx="5" cy="5" r="3.5"/>
+      <path d="M7.5 7.5L11 11"/>
+    </svg>
+    Find Facts
+  </button>
+  <button class="ai-tool-btn" id="ai-translate-btn" title="Translate page content">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="6" cy="6" r="5"/>
+      <path d="M6 1C6 1 4 4 4 6s2 5 2 5M6 1c0 0 2 3 2 5S6 11 6 11M1 6h10"/>
+    </svg>
+    Translate
+  </button>
+  <button class="ai-tool-btn" id="ai-grammar-btn" title="Grammar-check selected text">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 9l3-7 3 7M3.5 7h3"/>
+      <path d="M9 5c.8 0 1.5.4 1.5 1.5S10 9 9 9H7.5V5H9z"/>
+    </svg>
+    Grammar
+  </button>
+  <button class="ai-tool-btn" id="ai-explain-btn" title="Explain selected text simply">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="6" cy="5" r="3.5"/>
+      <path d="M6 8.5v.5M5 11h2"/>
+    </svg>
+    Explain
+  </button>
+</div>
+
+<!-- Translate language picker (shown only when Translate is clicked) -->
+<div class="ai-translate-row" id="ai-translate-row">
+  <select class="ai-lang-select" id="ai-lang-select">
+    <option value="">Choose language…</option>
+    <option>Arabic</option>
+    <option>Chinese (Simplified)</option>
+    <option>Chinese (Traditional)</option>
+    <option>Dutch</option>
+    <option>English</option>
+    <option>French</option>
+    <option>German</option>
+    <option>Hindi</option>
+    <option>Indonesian</option>
+    <option>Italian</option>
+    <option>Japanese</option>
+    <option>Korean</option>
+    <option>Polish</option>
+    <option>Portuguese</option>
+    <option>Russian</option>
+    <option>Spanish</option>
+    <option>Swedish</option>
+    <option>Turkish</option>
+    <option>Ukrainian</option>
+    <option>Vietnamese</option>
+  </select>
+  <button class="ai-translate-go" id="ai-translate-go" disabled>Go</button>
+</div>
+
+<!-- Chat message history -->
+<div class="ai-chat-area" id="ai-chat-area"></div>
+
+<!-- Input row — ask anything -->
 <div class="ai-input-row">
-  <textarea class="ai-input" id="ai-input" rows="1" placeholder="Ask about this page…"></textarea>
-  <button class="ai-send-btn" id="ai-send-btn">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <textarea class="ai-input" id="ai-input" rows="1"
+    placeholder="Ask about this page… (Enter to send, Shift+Enter for newline)"></textarea>
+  <button class="ai-send-btn" id="ai-send-btn" title="Send (Enter)">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M7 12V2M2 7l5-5 5 5"/>
     </svg>
   </button>
 </div>
-
-<script>
-'use strict'
-;(async () => {
-  const api = window.electronAPI
-  if (!api) return   // standalone preview mode — no IPC available
-
-  const chatArea   = document.getElementById('ai-chat-area')
-  const inputEl    = document.getElementById('ai-input')
-  const sendBtn    = document.getElementById('ai-send-btn')
-  const summBtn    = document.getElementById('ai-summarize-btn')
-  const clearBtn   = document.getElementById('ai-clear-btn')
-  const keyBtn     = document.getElementById('ai-key-btn')
-  const keySect    = document.getElementById('ai-key-section')
-  const keyInput   = document.getElementById('ai-key-input')
-  const keySave    = document.getElementById('ai-key-save-btn')
-  const modelSel   = document.getElementById('ai-model-select')
-
-  let chatHistory = [], apiKey = '', model = 'claude-haiku-4-5-20251001', isBusy = false
-
-  const saved = await api.aiGetKey().catch(() => ({}))
-  apiKey = saved.apiKey || ''
-  model  = saved.model  || model
-  modelSel.value = model
-  keySect.className = 'ai-key-section' + (apiKey ? '' : ' visible')
-
-  keyBtn.addEventListener('click', () => {
-    keySect.classList.toggle('visible')
-    if (keySect.classList.contains('visible')) keyInput.focus()
-  })
-  keySave.addEventListener('click', async () => {
-    const k = keyInput.value.trim()
-    if (!k) return
-    apiKey = k; keyInput.value = ''
-    await api.aiSaveKey({ apiKey, model })
-    keySect.classList.remove('visible')
-  })
-  modelSel.addEventListener('change', async () => {
-    model = modelSel.value
-    await api.aiSaveKey({ apiKey, model })
-  })
-  clearBtn.addEventListener('click', () => { chatHistory = []; chatArea.innerHTML = ''; showWelcome() })
-
-  summBtn.addEventListener('click', async () => {
-    if (isBusy || !apiKey) return
-    const ctx = await getCtx()
-    chatHistory = []; chatArea.innerHTML = ''
-    await send('Summarize the main content of this page in 3-4 paragraphs.', ctx)
-  })
-
-  sendBtn.addEventListener('click', go)
-  inputEl.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go() } })
-
-  async function go() {
-    const t = inputEl.value.trim()
-    if (!t || isBusy || !apiKey) return
-    inputEl.value = ''; inputEl.style.height = 'auto'
-    await send(t, await getCtx())
-  }
-
-  async function send(userText, ctx) {
-    isBusy = true; setBusy(true)
-    addMsg('user', userText)
-    chatHistory.push({ role: 'user', content: userText })
-    const typing = showTyping()
-    try {
-      const reply = await api.aiChat({
-        apiKey, model, messages: chatHistory,
-        system: 'You are a helpful AI assistant in a browser sidebar. Be concise.' +
-          (ctx.text ? `\n\nPage URL: ${ctx.url}\nTitle: ${ctx.title}\nContent:\n${ctx.text}` : '')
-      })
-      typing.remove(); addMsg('ai', reply)
-      chatHistory.push({ role: 'assistant', content: reply })
-    } catch (e) { typing.remove(); addMsg('error', e.message) }
-    isBusy = false; setBusy(false)
-  }
-
-  async function getCtx() {
-    return { text: '', url: '', title: '' }   // no webview in standalone mode
-  }
-
-  function addMsg(role, text) {
-    document.querySelector('.ai-welcome')?.remove()
-    const w = document.createElement('div'); w.className = `ai-msg ai-msg-${role}`
-    const b = document.createElement('div'); b.className = 'ai-msg-bubble'; b.textContent = text
-    w.appendChild(b)
-    if (role === 'ai') {
-      const c = document.createElement('button'); c.className = 'ai-copy-btn'; c.textContent = 'Copy'
-      c.onclick = () => { navigator.clipboard.writeText(text); c.textContent = 'Copied!'; setTimeout(() => c.textContent='Copy', 1600) }
-      w.appendChild(c)
-    }
-    chatArea.appendChild(w); chatArea.scrollTop = chatArea.scrollHeight
-  }
-
-  function showTyping() {
-    const w = document.createElement('div'); w.className = 'ai-msg ai-msg-ai ai-typing'
-    const b = document.createElement('div'); b.className = 'ai-msg-bubble'
-    b.innerHTML = '<div class="ai-dots"><span></span><span></span><span></span></div>'
-    w.appendChild(b); chatArea.appendChild(w); chatArea.scrollTop = chatArea.scrollHeight
-    return w
-  }
-
-  function showWelcome() {
-    const el = document.createElement('div'); el.className = 'ai-welcome'
-    el.innerHTML = '<div class="ai-welcome-icon">✦</div><p>Ask me anything about the current page.</p>'
-    chatArea.appendChild(el)
-  }
-
-  function setBusy(b) { sendBtn.disabled = b; summBtn.disabled = b; inputEl.disabled = b }
-})()
-</script>
-</body>
-</html>

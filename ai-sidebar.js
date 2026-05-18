@@ -1,114 +1,79 @@
 'use strict'
-;(function () {
+;(async function () {
 
-// ─── Build sidebar DOM ────────────────────────────────────────────────────────
+// ── Inject sidebar HTML into the main area ────────────────────────────────────
 
 const sidebar = document.createElement('div')
-sidebar.id = 'ai-sidebar'
-sidebar.innerHTML = `
-  <!-- Header -->
-  <div class="ai-header">
-    <svg class="ai-header-icon" width="16" height="16" viewBox="0 0 15 15" fill="currentColor">
-      <path d="M7.5 0.5 L8.9 5.3 L13.8 5.4 L9.9 8.4 L11.4 13.2 L7.5 10.2 L3.6 13.2 L5.1 8.4 L1.2 5.4 L6.1 5.3 Z"/>
-    </svg>
-    <span class="ai-header-title">Claude AI</span>
-    <select class="ai-model-select" id="ai-model-select">
-      <option value="claude-haiku-4-5-20251001">Haiku (fast)</option>
-      <option value="claude-sonnet-4-6">Sonnet</option>
-      <option value="claude-opus-4-7">Opus (powerful)</option>
-    </select>
-    <button class="ai-header-btn" id="ai-key-btn" title="API key settings">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-        <circle cx="5" cy="8" r="3"/><path d="M7.5 5.5 L11 2 M9 2 L11 2 L11 4"/>
-      </svg>
-    </button>
-    <button class="ai-header-btn" id="ai-clear-btn" title="Clear chat">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M2 3h9M5 3V2h3v1M3.5 3l.5 8h5l.5-8"/>
-      </svg>
-    </button>
-    <button class="ai-header-btn" id="ai-close-btn" title="Close sidebar">✕</button>
-  </div>
+sidebar.id    = 'ai-sidebar'
 
-  <!-- API key section (shown when no key saved) -->
-  <div class="ai-key-section" id="ai-key-section">
-    <p>Enter your <strong style="color:#c084fc">Anthropic API key</strong> to activate the AI assistant. Get one free at anthropic.com.</p>
-    <div class="ai-key-row">
-      <input class="ai-key-input" id="ai-key-input" type="password" placeholder="sk-ant-api03-...">
-      <button class="ai-key-save" id="ai-key-save-btn">Save</button>
+try {
+  const res  = await fetch('./ai-sidebar.html')
+  const html = await res.text()
+  // Strip the HTML comment on line 1, use the rest
+  sidebar.innerHTML = html.replace(/^<!--.*?-->\n?/s, '')
+} catch (_) {
+  // Minimal inline fallback if file fetch fails
+  sidebar.innerHTML = `
+    <div class="ai-header">
+      <span class="ai-header-title">AI Assistant</span>
+      <span class="ai-provider-badge" id="ai-provider-badge"></span>
+      <button class="ai-header-btn" id="ai-clear-btn">🗑</button>
+      <button class="ai-header-btn" id="ai-close-btn">✕</button>
     </div>
-  </div>
-
-  <!-- Chat messages -->
-  <div class="ai-chat-area" id="ai-chat-area"></div>
-
-  <!-- Quick action -->
-  <div class="ai-actions">
-    <button class="ai-summarize-btn" id="ai-summarize-btn">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M2 3h9M2 6h7M2 9h5"/>
-      </svg>
-      Summarize this page
-    </button>
-  </div>
-
-  <!-- Input -->
-  <div class="ai-input-row">
-    <textarea class="ai-input" id="ai-input" rows="1" placeholder="Ask about this page…"></textarea>
-    <button class="ai-send-btn" id="ai-send-btn" title="Send (Enter)">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M7 12V2M2 7l5-5 5 5"/>
-      </svg>
-    </button>
-  </div>
-`
+    <div class="ai-actions">
+      <button class="ai-summarize-btn" id="ai-summarize-btn">📄 Summarize this page</button>
+    </div>
+    <div class="ai-tools-grid">
+      <button class="ai-tool-btn" id="ai-facts-btn">Find Facts</button>
+      <button class="ai-tool-btn" id="ai-translate-btn">Translate</button>
+      <button class="ai-tool-btn" id="ai-grammar-btn">Grammar</button>
+      <button class="ai-tool-btn" id="ai-explain-btn">Explain</button>
+    </div>
+    <div class="ai-translate-row" id="ai-translate-row">
+      <select class="ai-lang-select" id="ai-lang-select">
+        <option value="">Choose language…</option>
+        <option>Spanish</option><option>French</option><option>German</option>
+        <option>Japanese</option><option>Arabic</option><option>Hindi</option>
+        <option>English</option>
+      </select>
+      <button class="ai-translate-go" id="ai-translate-go">Go</button>
+    </div>
+    <div class="ai-chat-area" id="ai-chat-area"></div>
+    <div class="ai-input-row">
+      <textarea class="ai-input" id="ai-input" rows="1" placeholder="Ask about this page…"></textarea>
+      <button class="ai-send-btn" id="ai-send-btn">▲</button>
+    </div>`
+}
 
 document.getElementById('main-area').appendChild(sidebar)
 
-// ─── DOM refs ─────────────────────────────────────────────────────────────────
+// ── DOM refs ──────────────────────────────────────────────────────────────────
 
-const chatArea    = document.getElementById('ai-chat-area')
-const inputEl     = document.getElementById('ai-input')
-const sendBtn     = document.getElementById('ai-send-btn')
-const summBtn     = document.getElementById('ai-summarize-btn')
-const clearBtn    = document.getElementById('ai-clear-btn')
-const closeBtn    = document.getElementById('ai-close-btn')
-const keySection  = document.getElementById('ai-key-section')
-const keyInput    = document.getElementById('ai-key-input')
-const keySaveBtn  = document.getElementById('ai-key-save-btn')
-const keyBtn      = document.getElementById('ai-key-btn')
-const modelSelect = document.getElementById('ai-model-select')
-const toggleBtn   = document.getElementById('btn-ai')
-const api         = window.electronAPI
+const chatArea     = document.getElementById('ai-chat-area')
+const inputEl      = document.getElementById('ai-input')
+const sendBtn      = document.getElementById('ai-send-btn')
+const summBtn      = document.getElementById('ai-summarize-btn')
+const clearBtn     = document.getElementById('ai-clear-btn')
+const closeBtn     = document.getElementById('ai-close-btn')
+const translateRow = document.getElementById('ai-translate-row')
+const langSelect   = document.getElementById('ai-lang-select')
+const translateGo  = document.getElementById('ai-translate-go')
+const provBadge    = document.getElementById('ai-provider-badge')
+const toggleBtn    = document.getElementById('btn-ai')
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────────
 
-let chatHistory = []
-let apiKey      = ''
-let model       = 'claude-haiku-4-5-20251001'
+let chatHistory = []   // [ { role, content }, … ]
 let isOpen      = false
 let isBusy      = false
 
-// ─── Init: load saved key + model ────────────────────────────────────────────
-
-;(async () => {
-  try {
-    const saved = await api.aiGetKey()
-    apiKey = saved.apiKey || ''
-    model  = saved.model  || 'claude-haiku-4-5-20251001'
-    modelSelect.value = model
-  } catch (_) {}
-  keySection.style.display = apiKey ? 'none' : 'flex'
-  showWelcome()
-})()
-
-// ─── Sidebar toggle ───────────────────────────────────────────────────────────
+// ── Sidebar open / close ──────────────────────────────────────────────────────
 
 toggleBtn.addEventListener('click', () => {
   isOpen = !isOpen
   sidebar.classList.toggle('open', isOpen)
   toggleBtn.classList.toggle('active', isOpen)
-  if (isOpen) inputEl.focus()
+  if (isOpen) { updateProviderBadge(); inputEl.focus() }
 })
 
 closeBtn.addEventListener('click', () => {
@@ -117,87 +82,71 @@ closeBtn.addEventListener('click', () => {
   toggleBtn.classList.remove('active')
 })
 
-// ─── API key ──────────────────────────────────────────────────────────────────
-
-keyBtn.addEventListener('click', () => {
-  keySection.style.display = keySection.style.display === 'none' ? 'flex' : 'none'
-  if (keySection.style.display === 'flex') keyInput.focus()
-})
-
-keySaveBtn.addEventListener('click', async () => {
-  const k = keyInput.value.trim()
-  if (!k) return
-  apiKey = k
-  keyInput.value = ''
-  await api.aiSaveKey({ apiKey, model })
-  keySection.style.display = 'none'
-  keySaveBtn.textContent = 'Saved!'
-  setTimeout(() => { keySaveBtn.textContent = 'Save' }, 1500)
-})
-
-keyInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') keySaveBtn.click()
-})
-
-// ─── Model change ─────────────────────────────────────────────────────────────
-
-modelSelect.addEventListener('change', async () => {
-  model = modelSelect.value
-  await api.aiSaveKey({ apiKey, model })
-})
-
-// ─── Clear chat ───────────────────────────────────────────────────────────────
+// ── Clear chat ────────────────────────────────────────────────────────────────
 
 clearBtn.addEventListener('click', () => {
   chatHistory = []
   chatArea.innerHTML = ''
+  translateRow.classList.remove('open')
   showWelcome()
 })
 
-// ─── Summarize ────────────────────────────────────────────────────────────────
+// ── Get the currently-visible webview ─────────────────────────────────────────
 
-summBtn.addEventListener('click', async () => {
-  if (isBusy) return
-  if (!apiKey) { showKeyPrompt(); return }
-
-  const ctx = await getPageContext()
-  if (!ctx.text) {
-    appendMsg('error', 'Could not read this page. Try navigating to a webpage first.')
-    return
-  }
-
-  chatHistory = []
-  chatArea.innerHTML = ''
-  await sendMessage('Summarize the main content of this page in 3-4 clear paragraphs.', ctx)
-})
-
-// ─── Chat input ───────────────────────────────────────────────────────────────
-
-sendBtn.addEventListener('click', sendInput)
-
-inputEl.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendInput() }
-})
-
-// Auto-resize textarea
-inputEl.addEventListener('input', () => {
-  inputEl.style.height = 'auto'
-  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px'
-})
-
-async function sendInput() {
-  const text = inputEl.value.trim()
-  if (!text || isBusy) return
-  if (!apiKey) { showKeyPrompt(); return }
-  inputEl.value = ''
-  inputEl.style.height = 'auto'
-  const ctx = await getPageContext()
-  await sendMessage(text, ctx)
+function getActiveWebview () {
+  return Array.from(document.querySelectorAll('#webview-stack webview'))
+    .find(wv => wv.style.display === 'flex')
+    || document.querySelector('#webview-stack webview')
 }
 
-// ─── Core: send to Claude API ─────────────────────────────────────────────────
+// ── Extract readable text from the active page ────────────────────────────────
 
-async function sendMessage(userText, ctx) {
+async function getPageContext () {
+  const wv = getActiveWebview()
+  if (!wv) return { text: '', url: '', title: '' }
+  try {
+    const text = await wv.executeJavaScript(`
+      (function () {
+        const clone = document.body.cloneNode(true)
+        clone.querySelectorAll('script,style,noscript,nav,footer,aside,header,[role="navigation"],[role="banner"]')
+          .forEach(el => el.remove())
+        return (clone.innerText || '')
+          .replace(/[ \\t]+/g, ' ')
+          .replace(/\\n{3,}/g, '\\n\\n')
+          .trim()
+          .slice(0, 8000)
+      })()
+    `)
+    return {
+      text:  text || '',
+      url:   wv.getURL?.()   || '',
+      title: wv.getTitle?.() || '',
+    }
+  } catch (_) {
+    return { text: '', url: '', title: '' }
+  }
+}
+
+// ── System prompt ─────────────────────────────────────────────────────────────
+
+function buildSystem (ctx) {
+  let s = 'You are a helpful AI assistant embedded in a web browser sidebar. '
+  s    += 'Be concise, clear, and friendly. Use plain text — no markdown symbols like **, ##, or *. '
+  s    += 'Detect the language of the page content and respond in that same language by default.'
+  if (ctx.text) {
+    s += '\n\nCurrent page URL: '   + ctx.url
+    s += '\nPage title: '           + ctx.title
+    s += '\nPage content:\n'        + ctx.text
+  } else {
+    s += '\n\nNo page content available. The user may be on a new tab or blank page.'
+  }
+  return s
+}
+
+// ── Core: send message with auto-fallback ─────────────────────────────────────
+
+async function sendMessage (userText, ctx) {
+  if (isBusy) return
   isBusy = true
   setBusy(true)
 
@@ -205,76 +154,164 @@ async function sendMessage(userText, ctx) {
   chatHistory.push({ role: 'user', content: userText })
 
   const typingEl = showTyping()
-
-  const system = buildSystem(ctx)
+  const system   = buildSystem(ctx)
+  const messages = [{ role: 'system', content: system }, ...chatHistory]
 
   try {
-    const reply = await api.aiChat({ apiKey, model, system, messages: chatHistory })
+    const { text, label } = await window.AiConfig.callAI(messages)
     typingEl.remove()
-    appendMsg('ai', reply)
-    chatHistory.push({ role: 'assistant', content: reply })
+    appendMsg('ai', text)
+    chatHistory.push({ role: 'assistant', content: text })
+    updateProviderBadge(label)
   } catch (err) {
     typingEl.remove()
-    appendMsg('error', err.message || 'Request failed. Check your API key and internet connection.')
+    appendMsg('error', 'AI temporarily unavailable, try again')
+    console.error('[AI Sidebar]', err.message)
   }
 
   isBusy = false
   setBusy(false)
 }
 
-// ─── Page content extraction ──────────────────────────────────────────────────
+// ── Summarize ─────────────────────────────────────────────────────────────────
 
-async function getPageContext() {
+summBtn.addEventListener('click', async () => {
+  if (isBusy) return
+  const ctx = await getPageContext()
+  if (!ctx.text) {
+    appendMsg('error', 'Could not read this page. Navigate to any webpage first.')
+    return
+  }
+  chatHistory = []
+  chatArea.innerHTML = ''
+  await sendMessage(
+    'Summarize the main content of this page in 3-4 clear paragraphs. Be informative and concise.',
+    ctx
+  )
+})
+
+// ── Find Facts ────────────────────────────────────────────────────────────────
+
+document.getElementById('ai-facts-btn').addEventListener('click', async () => {
+  if (isBusy) return
+  const ctx = await getPageContext()
+  if (!ctx.text) { appendMsg('error', 'Navigate to a webpage first.'); return }
+  await sendMessage(
+    'List the 5 most important facts or key points from this page, numbered, one per line.',
+    ctx
+  )
+})
+
+// ── Translate ─────────────────────────────────────────────────────────────────
+
+document.getElementById('ai-translate-btn').addEventListener('click', () => {
+  translateRow.classList.toggle('open')
+  if (translateRow.classList.contains('open')) langSelect.focus()
+})
+
+// Enable Go button only when a language is selected
+langSelect.addEventListener('change', () => {
+  translateGo.disabled = !langSelect.value
+})
+
+translateGo.addEventListener('click', async () => {
+  const lang = langSelect.value
+  if (!lang) return
+  translateRow.classList.remove('open')
+  if (isBusy) return
+  const ctx = await getPageContext()
+  if (!ctx.text) { appendMsg('error', 'Navigate to a webpage first.'); return }
+  await sendMessage(
+    'Translate the main content of this page into ' + lang + '. Translate naturally and clearly.',
+    ctx
+  )
+})
+
+langSelect.addEventListener('keydown', e => {
+  if (e.key === 'Enter') translateGo.click()
+})
+
+// ── Grammar Check ─────────────────────────────────────────────────────────────
+
+document.getElementById('ai-grammar-btn').addEventListener('click', async () => {
+  if (isBusy) return
   const wv = getActiveWebview()
-  if (!wv) return { text: '', url: '', title: '' }
-  try {
-    const text = await wv.executeJavaScript(
-      `(document.body?.innerText || '').replace(/\\s+/g, ' ').trim().substring(0, 9000)`
-    )
-    return { text, url: wv.getURL(), title: wv.getTitle() }
-  } catch { return { text: '', url: '', title: '' } }
-}
-
-function getActiveWebview() {
-  for (const wv of document.querySelectorAll('#webview-stack webview')) {
-    if (wv.style.display && wv.style.display !== 'none') return wv
+  let selected = ''
+  if (wv) {
+    try { selected = await wv.executeJavaScript('window.getSelection().toString().trim()') } catch (_) {}
   }
-  return null
-}
-
-function buildSystem(ctx) {
-  let s = 'You are a helpful AI assistant embedded in a web browser sidebar. Be concise and clear. Use plain text without markdown syntax.'
-  if (ctx.text) {
-    s += `\n\nThe user is currently viewing:\nURL: ${ctx.url}\nTitle: ${ctx.title}\n\nPage content:\n${ctx.text}`
-  } else {
-    s += '\n\nNo page content is available — the user may be on a new tab or internal page.'
+  if (!selected) {
+    appendMsg('error', 'Select some text on the page first, then click Grammar.')
+    return
   }
-  return s
+  await sendMessage(
+    'Grammar check this text and list any corrections needed:\n\n"' + selected.slice(0, 2000) + '"',
+    { text: '', url: '', title: '' }
+  )
+})
+
+// ── Explain ───────────────────────────────────────────────────────────────────
+
+document.getElementById('ai-explain-btn').addEventListener('click', async () => {
+  if (isBusy) return
+  const wv = getActiveWebview()
+  let selected = ''
+  if (wv) {
+    try { selected = await wv.executeJavaScript('window.getSelection().toString().trim()') } catch (_) {}
+  }
+  if (!selected) {
+    appendMsg('error', 'Select some text on the page first, then click Explain.')
+    return
+  }
+  await sendMessage(
+    'Explain this in simple terms that anyone can understand:\n\n"' + selected.slice(0, 2000) + '"',
+    { text: '', url: '', title: '' }
+  )
+})
+
+// ── Chat input ────────────────────────────────────────────────────────────────
+
+sendBtn.addEventListener('click', sendInput)
+
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendInput() }
+})
+
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto'
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px'
+})
+
+async function sendInput () {
+  const text = inputEl.value.trim()
+  if (!text || isBusy) return
+  inputEl.value        = ''
+  inputEl.style.height = 'auto'
+  const ctx = await getPageContext()
+  await sendMessage(text, ctx)
 }
 
-// ─── UI helpers ───────────────────────────────────────────────────────────────
+// ── UI helpers ────────────────────────────────────────────────────────────────
 
-function appendMsg(role, text) {
-  // Remove welcome message on first real message
-  const welcome = chatArea.querySelector('.ai-welcome')
-  if (welcome) welcome.remove()
+function appendMsg (role, text) {
+  chatArea.querySelector('.ai-welcome')?.remove()
 
   const wrap   = document.createElement('div')
-  wrap.className = `ai-msg ai-msg-${role}`
+  wrap.className = 'ai-msg ai-msg-' + role
 
   const bubble = document.createElement('div')
-  bubble.className = 'ai-msg-bubble'
+  bubble.className   = 'ai-msg-bubble'
   bubble.textContent = text
   wrap.appendChild(bubble)
 
   if (role === 'ai') {
     const copy = document.createElement('button')
-    copy.className = 'ai-copy-btn'
+    copy.className   = 'ai-copy-btn'
     copy.textContent = 'Copy'
     copy.addEventListener('click', () => {
       navigator.clipboard.writeText(text).catch(() => {})
       copy.textContent = 'Copied!'
-      setTimeout(() => { copy.textContent = 'Copy' }, 1600)
+      setTimeout(() => { copy.textContent = 'Copy' }, 1800)
     })
     wrap.appendChild(copy)
   }
@@ -283,8 +320,8 @@ function appendMsg(role, text) {
   chatArea.scrollTop = chatArea.scrollHeight
 }
 
-function showTyping() {
-  const wrap = document.createElement('div')
+function showTyping () {
+  const wrap   = document.createElement('div')
   wrap.className = 'ai-msg ai-msg-ai ai-typing'
   const bubble = document.createElement('div')
   bubble.className = 'ai-msg-bubble'
@@ -295,25 +332,57 @@ function showTyping() {
   return wrap
 }
 
-function showWelcome() {
+function showWelcome () {
   const el = document.createElement('div')
   el.className = 'ai-welcome'
   el.innerHTML = `
     <div class="ai-welcome-icon">✦</div>
-    <p>Ask me anything about the current page, or click <strong>Summarize this page</strong> to get started.</p>
-  `
+    <p><strong>Free AI — no API key needed.</strong></p>
+    <p>Click <strong>Summarize</strong> for a quick page summary,<br>or type any question below.</p>
+    <p style="margin-top:6px">Select text on the page first,<br>then use <strong>Grammar</strong> or <strong>Explain</strong>.</p>`
   chatArea.appendChild(el)
 }
 
-function showKeyPrompt() {
-  keySection.style.display = 'flex'
-  keyInput.focus()
+function updateProviderBadge (label) {
+  if (!provBadge) return
+  provBadge.textContent = label || window.AiConfig?.getCurrentLabel() || 'Free AI'
 }
 
-function setBusy(busy) {
-  sendBtn.disabled   = busy
-  summBtn.disabled   = busy
-  inputEl.disabled   = busy
+function setBusy (busy) {
+  sendBtn.disabled = busy
+  summBtn.disabled = busy
+  inputEl.disabled = busy
+  ;['ai-facts-btn', 'ai-translate-btn', 'ai-grammar-btn', 'ai-explain-btn', 'ai-translate-go']
+    .forEach(id => {
+      const el = document.getElementById(id)
+      if (el) el.disabled = busy
+    })
 }
+
+// ── Public bridge (used by other scripts that want to talk to the sidebar) ────
+
+window.aiBridge = {
+  openSidebar () {
+    if (!isOpen) {
+      isOpen = true
+      sidebar.classList.add('open')
+      toggleBtn.classList.add('active')
+      updateProviderBadge()
+    }
+  },
+  appendMsg,
+  showTyping,
+  setBusy,
+  getActiveWebview,
+  sendMessage: async (text, usePageCtx = true) => {
+    const ctx = usePageCtx ? await getPageContext() : { text: '', url: '', title: '' }
+    return sendMessage(text, ctx)
+  },
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+showWelcome()
+updateProviderBadge()
 
 })()
