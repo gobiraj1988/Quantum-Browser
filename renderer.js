@@ -271,8 +271,11 @@ function navigate(rawInput) {
 function bindWebviewEvents(tab) {
   const wv = tab.webviewEl
 
+  let loadStartMs = 0
+
   wv.addEventListener('did-start-loading', () => {
     tab.isLoading = true
+    loadStartMs   = Date.now()
     updateTabEl(tab.id)
     if (tab.id === activeTabId) setToolbarLoading(true)
   })
@@ -280,7 +283,16 @@ function bindWebviewEvents(tab) {
   wv.addEventListener('did-stop-loading', () => {
     tab.isLoading = false
     updateTabEl(tab.id)
-    if (tab.id === activeTabId) { setToolbarLoading(false); updateNavButtons(); statusText.textContent = 'Done' }
+    if (tab.id === activeTabId) {
+      setToolbarLoading(false)
+      updateNavButtons()
+      statusText.textContent = 'Done'
+    }
+    // Report load time to performance monitor
+    if (loadStartMs > 0) {
+      window.electronAPI?.reportPageLoad?.(Date.now() - loadStartMs)
+      loadStartMs = 0
+    }
   })
 
   wv.addEventListener('did-navigate', (e) => {
@@ -293,6 +305,8 @@ function bindWebviewEvents(tab) {
       updateNavButtons()
       document.dispatchEvent(new CustomEvent('url-changed', { detail: { url: e.url } }))
     }
+    // Prefetch DNS for all links on the newly loaded page
+    prefetchPageLinks(wv)
   })
 
   wv.addEventListener('did-navigate-in-page', (e) => {
@@ -469,6 +483,35 @@ document.addEventListener('keydown', (e) => {
   if (e.altKey && e.key === 'ArrowLeft')  { e.preventDefault(); tab.webviewEl.goBack() }
   if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); tab.webviewEl.goForward() }
   if (e.key === 'F5' && !e.altKey)        { e.preventDefault(); tab.webviewEl.reload() }
+})
+
+// ── DNS Prefetch ──────────────────────────────────────────────────────────────
+// After a page loads, extract all unique link hostnames and send them to the
+// main process for background DNS lookup so clicking links has zero DNS latency.
+
+function prefetchPageLinks(webviewEl) {
+  try {
+    webviewEl.executeJavaScript(`
+      (function() {
+        const hosts = new Set()
+        document.querySelectorAll('a[href]').forEach(a => {
+          try {
+            const u = new URL(a.href)
+            if (u.protocol === 'https:' || u.protocol === 'http:') hosts.add(u.hostname)
+          } catch (_) {}
+        })
+        return [...hosts].slice(0, 50)
+      })()
+    `).then(hosts => {
+      if (hosts?.length) window.electronAPI?.dnsPrefetch?.(hosts)
+    }).catch(() => {})
+  } catch (_) {}
+}
+
+// ── Security Warning ──────────────────────────────────────────────────────────
+
+window.electronAPI?.onSecurityWarn?.((data) => {
+  if (statusText) statusText.textContent = data.message || '⚠ Suspicious domain'
 })
 
 // ── Start ─────────────────────────────────────────────────────────────────────

@@ -1,12 +1,15 @@
 {
   "name": "mybrowser",
   "version": "1.0.0",
-  "description": "My Simple Web Browser",
+  "description": "MyBrowser — a private, AI-powered desktop browser built with Electron",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dev": "electron . --enable-logging"
   },
   "dependencies": {
-    "electron": "latest"
-  }
+    "electron": "^42.1.0",
+    "yt-dlp-exec": "^1.0.2"
+  },
+  "license": "MIT"
 }

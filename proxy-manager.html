@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Proxy Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #202124;
+      --bg2:    #2a2b2f;
+      --bg3:    #35363a;
+      --border: rgba(255,255,255,0.08);
+      --accent: #8ab4f8;
+      --green:  #81c995;
+      --yellow: #fbbf24;
+      --red:    #f28b82;
+      --purple: #c084fc;
+      --text:   #e8eaed;
+      --muted:  #9aa0a6;
+    }
+
+    html, body {
+      height: 100%; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px; overflow: hidden;
+    }
+
+    #app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* ── Header ─────────────────────────────────────────────────────────────── */
+    #header {
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      padding: 14px 18px 12px; flex-shrink: 0;
+    }
+    #hdr-top {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    }
+    .hdr-icon {
+      width: 30px; height: 30px; border-radius: 7px;
+      background: rgba(192,132,252,0.12);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--purple); flex-shrink: 0;
+    }
+    #hdr-top h1 { font-size: 15px; font-weight: 600; flex: 1; }
+
+    /* Status pill */
+    #status-pill {
+      font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 12px;
+      background: rgba(255,255,255,0.06); color: var(--muted);
+      transition: background 0.2s, color 0.2s;
+    }
+    #status-pill.connected {
+      background: rgba(129,201,149,0.14); color: var(--green);
+    }
+
+    /* IP comparison bar */
+    #ip-bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .ip-box {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg3); border-radius: 8px; padding: 7px 12px; flex: 1; min-width: 0;
+    }
+    .ip-label { font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted); white-space: nowrap; }
+    .ip-val { font-size: 13px; font-weight: 600; color: var(--text);
+      font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ip-val.loading { color: var(--muted); font-weight: 400; font-style: italic; }
+    #real-dot, #proxy-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: var(--muted);
+    }
+    #proxy-dot.on { background: var(--green); }
+
+    .ip-sep { color: var(--muted); font-size: 16px; flex-shrink: 0; }
+
+    /* ── Controls row ────────────────────────────────────────────────────────── */
+    #controls {
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+      padding: 10px 18px; border-bottom: 1px solid var(--border);
+      background: var(--bg2); flex-wrap: wrap;
+    }
+
+    select.ctrl-select {
+      background: var(--bg3); color: var(--text);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 7px;
+      padding: 7px 10px; font-size: 12px; cursor: pointer; outline: none;
+    }
+    select.ctrl-select:focus { border-color: var(--accent); }
+
+    .btn {
+      padding: 7px 13px; border-radius: 7px; border: none;
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: opacity 0.12s, background 0.12s; white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-fetch  { background: var(--bg3); color: var(--text); border: 1px solid rgba(255,255,255,0.1); }
+    .btn-fetch:hover:not(:disabled) { background: #42444a; }
+    .btn-test-all { background: rgba(138,180,248,0.12); color: var(--accent); border: 1px solid rgba(138,180,248,0.2); }
+    .btn-test-all:hover:not(:disabled) { background: rgba(138,180,248,0.2); }
+    .btn-disconnect { background: rgba(242,139,130,0.1); color: var(--red); border: 1px solid rgba(242,139,130,0.2); }
+    .btn-disconnect:hover:not(:disabled) { background: rgba(242,139,130,0.2); }
+
+    /* Auto-switch toggle */
+    .auto-wrap { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .auto-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .toggle-track {
+      width: 34px; height: 19px; background: rgba(255,255,255,0.1); border-radius: 10px;
+      position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+    }
+    .toggle-track.on { background: rgba(129,201,149,0.6); }
+    .toggle-thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 15px; height: 15px; background: var(--muted); border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle-track.on .toggle-thumb { transform: translateX(15px); background: var(--green); }
+
+    /* ── Proxy list ──────────────────────────────────────────────────────────── */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    #list-header {
+      display: grid; grid-template-columns: 2fr 1fr 70px 70px 100px;
+      padding: 7px 18px; font-size: 10.5px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+      background: var(--bg);
+    }
+
+    #proxy-list {
+      flex: 1; overflow-y: auto;
+    }
+    #proxy-list::-webkit-scrollbar { width: 5px; }
+    #proxy-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+
+    #list-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 50px 20px; color: #4a4d51; text-align: center; gap: 10px;
+    }
+    #list-empty svg { opacity: 0.3; }
+    #list-empty p { font-size: 13px; }
+    #list-empty small { font-size: 11px; }
+
+    .proxy-row {
+      display: grid; grid-template-columns: 2fr 1fr 70px 70px 100px;
+      padding: 8px 18px; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      transition: background 0.08s;
+    }
+    .proxy-row:hover { background: rgba(255,255,255,0.025); }
+    .proxy-row.active { background: rgba(129,201,149,0.06); border-left: 2px solid var(--green); padding-left: 16px; }
+
+    .pr-ip { font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--text); }
+    .pr-country {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.3px; padding: 2px 6px; border-radius: 4px;
+      background: rgba(255,255,255,0.07); color: var(--muted);
+      width: fit-content;
+    }
+
+    .pr-speed { font-size: 12px; font-variant-numeric: tabular-nums; }
+    .pr-speed.fast   { color: var(--green); }
+    .pr-speed.ok     { color: var(--yellow); }
+    .pr-speed.slow   { color: var(--red); }
+    .pr-speed.dead   { color: #555; }
+    .pr-speed.testing { color: var(--muted); font-style: italic; font-size: 11px; }
+
+    .pr-status { font-size: 11px; }
+    .pr-status.fast   { color: var(--green); }
+    .pr-status.ok     { color: var(--yellow); }
+    .pr-status.slow   { color: var(--red); }
+    .pr-status.dead   { color: #555; }
+
+    .pr-btns { display: flex; gap: 5px; justify-content: flex-end; }
+
+    .pr-btn {
+      padding: 4px 10px; border-radius: 5px; border: none;
+      font-size: 11px; font-weight: 500; cursor: pointer;
+      transition: background 0.1s; white-space: nowrap;
+    }
+    .pr-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pr-btn-test    { background: rgba(138,180,248,0.1); color: var(--accent); }
+    .pr-btn-test:hover:not(:disabled)    { background: rgba(138,180,248,0.2); }
+    .pr-btn-connect { background: rgba(129,201,149,0.1); color: var(--green); }
+    .pr-btn-connect:hover:not(:disabled) { background: rgba(129,201,149,0.2); }
+    .pr-btn-active  { background: rgba(129,201,149,0.15); color: var(--green); cursor: default; }
+
+    /* ── Footer ─────────────────────────────────────────────────────────────── */
+    #footer {
+      padding: 7px 18px; background: var(--bg2); border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    }
+    #footer-count { font-size: 11px; color: var(--muted); }
+    #footer-note  { font-size: 11px; color: #4a4d51; flex: 1; }
+
+    /* ── Loading spinner ─────────────────────────────────────────────────────── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.15); border-top-color: var(--accent);
+      animation: spin 0.7s linear infinite; flex-shrink: 0;
+    }
+
+    #fetch-status { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────────── -->
+  <div id="header">
+    <div id="hdr-top">
+      <div class="hdr-icon">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"
+             stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="7.5" cy="7.5" r="6.5"/>
+          <path d="M7.5 1 C5.5 4 5.5 11 7.5 14"/>
+          <path d="M7.5 1 C9.5 4 9.5 11 7.5 14"/>
+          <line x1="1" y1="7.5" x2="14" y2="7.5"/>
+        </svg>
+      </div>
+      <h1>Proxy Manager</h1>
+      <span id="status-pill">Disconnected</span>
+    </div>
+
+    <div id="ip-bar">
+      <div class="ip-box">
+        <div id="real-dot"></div>
+        <span class="ip-label">Your IP</span>
+        <span class="ip-val loading" id="real-ip-val">Detecting…</span>
+      </div>
+      <span class="ip-sep">→</span>
+      <div class="ip-box">
+        <div id="proxy-dot"></div>
+        <span class="ip-label">Proxy IP</span>
+        <span class="ip-val loading" id="proxy-ip-val">Not connected</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Controls ──────────────────────────────────────────────────────────── -->
+  <div id="controls">
+    <select class="ctrl-select" id="country-sel">
+      <option value="all">All Countries</option>
+      <option value="us">United States</option>
+      <option value="gb">United Kingdom</option>
+      <option value="de">Germany</option>
+      <option value="fr">France</option>
+      <option value="nl">Netherlands</option>
+      <option value="jp">Japan</option>
+      <option value="sg">Singapore</option>
+      <option value="in">India</option>
+      <option value="br">Brazil</option>
+      <option value="ca">Canada</option>
+      <option value="au">Australia</option>
+    </select>
+
+    <button class="btn btn-fetch" id="btn-fetch">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 6A4 4 0 1 1 6 2"/>
+        <polyline points="9 1 11 3 9 5"/>
+      </svg>
+      Fetch Proxies
+    </button>
+
+    <button class="btn btn-test-all" id="btn-test-all" disabled>
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round">
+        <polyline points="1 6 4 9 11 3"/>
+      </svg>
+      Test All
+    </button>
+
+    <span id="fetch-status"></span>
+
+    <button class="btn btn-disconnect" id="btn-disconnect" style="display:none">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round">
+        <line x1="2" y1="2" x2="10" y2="10"/>
+        <line x1="10" y1="2" x2="2" y2="10"/>
+      </svg>
+      Disconnect
+    </button>
+
+    <div class="auto-wrap">
+      <span class="auto-label">Auto-switch on slow</span>
+      <div class="toggle-track" id="auto-toggle" title="Automatically switch to a faster proxy when current one slows down">
+        <div class="toggle-thumb"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── List ────────────────────────────────────────────────────────────────── -->
+  <div id="main">
+    <div id="list-header">
+      <span>IP Address</span>
+      <span>Country</span>
+      <span>Speed</span>
+      <span>Status</span>
+      <span></span>
+    </div>
+
+    <div id="proxy-list">
+      <div id="list-empty">
+        <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+          <circle cx="22" cy="22" r="18"/>
+          <path d="M22 4 C16 13 16 31 22 40"/>
+          <path d="M22 4 C28 13 28 31 22 40"/>
+          <line x1="4" y1="22" x2="40" y2="22"/>
+        </svg>
+        <p>No proxies loaded yet</p>
+        <small>Select a country and click <strong>Fetch Proxies</strong></small>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Footer ──────────────────────────────────────────────────────────────── -->
+  <div id="footer">
+    <span id="footer-count">0 proxies</span>
+    <span id="footer-note">SOCKS5 proxies — routes all traffic including HTTPS. Free proxies may be slow or short-lived.</span>
+  </div>
+
+</div>
+<script>
+'use strict'
+
+const api = window.electronAPI
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let proxyList    = []
+let currentProxy = null
+let autoSwitch   = false
+let testingAll   = false
+
+// ── DOM ───────────────────────────────────────────────────────────────────────
+
+const countrySel   = document.getElementById('country-sel')
+const btnFetch     = document.getElementById('btn-fetch')
+const btnTestAll   = document.getElementById('btn-test-all')
+const btnDiscon    = document.getElementById('btn-disconnect')
+const autoToggle   = document.getElementById('auto-toggle')
+const statusPill   = document.getElementById('status-pill')
+const realIpVal    = document.getElementById('real-ip-val')
+const proxyIpVal   = document.getElementById('proxy-ip-val')
+const proxyDot     = document.getElementById('proxy-dot')
+const listEl       = document.getElementById('proxy-list')
+const listEmpty    = document.getElementById('list-empty')
+const fetchStatus  = document.getElementById('fetch-status')
+const footerCount  = document.getElementById('footer-count')
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+
+function speedLabel(proxy) {
+  if (proxy.status === 'testing') return '<span class="pr-speed testing">Testing…</span>'
+  if (proxy.status === 'untested') return '<span class="pr-speed" style="color:#555">—</span>'
+  if (proxy.status === 'dead')  return '<span class="pr-speed dead">Dead</span>'
+  const ms = proxy.speed
+  if (!ms) return '<span class="pr-speed" style="color:#555">—</span>'
+  const cls = ms < 1500 ? 'fast' : ms < 4000 ? 'ok' : 'slow'
+  return `<span class="pr-speed ${cls}">${ms}ms</span>`
+}
+
+function statusLabel(proxy) {
+  if (proxy.status === 'untested') return '<span class="pr-status" style="color:#555">Untested</span>'
+  if (proxy.status === 'testing')  return '<span class="pr-status" style="color:var(--muted)">Testing…</span>'
+  if (proxy.status === 'dead')     return '<span class="pr-status dead">Dead</span>'
+  const cls = proxy.status
+  const lbl = cls.charAt(0).toUpperCase() + cls.slice(1)
+  return `<span class="pr-status ${cls}">${lbl}</span>`
+}
+
+function isActive(proxy) {
+  return currentProxy && proxy.ip === currentProxy.ip && proxy.port === currentProxy.port
+}
+
+function buildRow(proxy, idx) {
+  const active  = isActive(proxy)
+  const rowCls  = active ? 'proxy-row active' : 'proxy-row'
+  const connBtn = active
+    ? `<button class="pr-btn pr-btn-active" disabled>Connected</button>`
+    : `<button class="pr-btn pr-btn-connect" data-act="connect" data-idx="${idx}">Connect</button>`
+  return `<div class="${rowCls}" data-idx="${idx}">
+    <span class="pr-ip">${esc(proxy.ip)}:${proxy.port}</span>
+    <span class="pr-country">${esc(proxy.country || '—')}</span>
+    <span>${speedLabel(proxy)}</span>
+    <span>${statusLabel(proxy)}</span>
+    <div class="pr-btns">
+      <button class="pr-btn pr-btn-test" data-act="test" data-idx="${idx}">Test</button>
+      ${connBtn}
+    </div>
+  </div>`
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+}
+
+function renderList() {
+  if (proxyList.length === 0) {
+    listEmpty.style.display = 'flex'
+    listEl.innerHTML = ''
+    listEl.appendChild(listEmpty)
+    footerCount.textContent = '0 proxies'
+    return
+  }
+  listEmpty.style.display = 'none'
+  listEl.innerHTML = proxyList.map((p, i) => buildRow(p, i)).join('')
+  footerCount.textContent = proxyList.length + ' proxies'
+}
+
+function applyState(s) {
+  proxyList    = s.proxyList    || []
+  currentProxy = s.currentProxy || null
+  autoSwitch   = s.autoSwitch   || false
+
+  // Status pill
+  if (s.enabled && s.currentProxy) {
+    statusPill.textContent = 'Connected'
+    statusPill.className   = 'connected'
+    btnDiscon.style.display = ''
+  } else {
+    statusPill.textContent = 'Disconnected'
+    statusPill.className   = ''
+    btnDiscon.style.display = 'none'
+  }
+
+  // IP boxes
+  realIpVal.textContent  = s.realIp  || 'Unknown'
+  realIpVal.className    = 'ip-val' + (s.realIp ? '' : ' loading')
+
+  if (s.enabled && s.proxyIp && s.proxyIp !== s.realIp) {
+    proxyIpVal.textContent = s.proxyIp + ' ✓'
+    proxyIpVal.className   = 'ip-val'
+    proxyIpVal.style.color = 'var(--green)'
+    proxyDot.className     = 'on'
+  } else if (s.enabled && !s.proxyIp) {
+    proxyIpVal.textContent = 'Verifying…'
+    proxyIpVal.className   = 'ip-val loading'
+    proxyIpVal.style.color = ''
+    proxyDot.className     = ''
+  } else if (s.enabled && s.proxyIp === s.realIp) {
+    proxyIpVal.textContent = 'Not routing — try another proxy'
+    proxyIpVal.className   = 'ip-val'
+    proxyIpVal.style.color = 'var(--red)'
+    proxyDot.className     = ''
+  } else {
+    proxyIpVal.textContent = 'Not connected'
+    proxyIpVal.className   = 'ip-val loading'
+    proxyIpVal.style.color = ''
+    proxyDot.className     = ''
+  }
+
+  // Auto-switch toggle
+  autoToggle.className = 'toggle-track' + (autoSwitch ? ' on' : '')
+
+  // Test all button
+  btnTestAll.disabled = proxyList.length === 0 || testingAll
+
+  renderList()
+}
+
+// ── Fetch proxies ─────────────────────────────────────────────────────────────
+
+btnFetch.addEventListener('click', async () => {
+  if (btnFetch.dataset.busy) return
+  btnFetch.dataset.busy = '1'
+  btnFetch.disabled = true
+  fetchStatus.innerHTML = '<div class="spinner"></div> Fetching proxies…'
+
+  const country = countrySel.value
+  try {
+    const r = await api.proxyFetchList(country)
+    if (r.ok) {
+      fetchStatus.textContent = `Loaded ${r.count} proxies`
+    } else {
+      fetchStatus.textContent = 'Error: ' + r.error
+    }
+  } catch (e) {
+    fetchStatus.textContent = 'Error: ' + e.message
+  }
+
+  btnFetch.disabled = false
+  delete btnFetch.dataset.busy
+  setTimeout(() => { fetchStatus.textContent = '' }, 4000)
+})
+
+// ── Test all proxies ──────────────────────────────────────────────────────────
+
+btnTestAll.addEventListener('click', async () => {
+  if (testingAll || proxyList.length === 0) return
+  testingAll = true
+  btnTestAll.disabled = true
+
+  // Snapshot list at start so applyState() replacements mid-loop don't lose index
+  const snapshot = proxyList.map(p => ({ ...p }))
+  for (const p of proxyList) p.status = 'testing'
+  renderList()
+
+  const BATCH = 5
+  for (let i = 0; i < snapshot.length; i += BATCH) {
+    const batch = snapshot.slice(i, i + BATCH)
+    await Promise.all(batch.map(p => api.proxyTestOne(p)))
+  }
+
+  testingAll = false
+  btnTestAll.disabled = proxyList.length === 0
+})
+
+// ── Disconnect ────────────────────────────────────────────────────────────────
+
+btnDiscon.addEventListener('click', async () => {
+  await api.proxyDisconnect()
+})
+
+// ── Auto-switch toggle ────────────────────────────────────────────────────────
+
+autoToggle.addEventListener('click', async () => {
+  const next = !autoSwitch
+  await api.proxyToggleAutoSwitch(next)
+})
+
+// ── Row buttons (test / connect) ─────────────────────────────────────────────
+
+listEl.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-act]')
+  if (!btn) return
+  const idx   = parseInt(btn.dataset.idx)
+  const proxy = proxyList[idx]
+  if (!proxy) return
+
+  if (btn.dataset.act === 'test') {
+    proxy.status = 'testing'
+    renderList()
+    await api.proxyTestOne(proxy)
+  }
+
+  if (btn.dataset.act === 'connect') {
+    btn.disabled = true
+    btn.textContent = 'Connecting…'
+    const r = await api.proxyConnect(proxy)
+    if (!r.ok) {
+      btn.disabled = false
+      btn.textContent = 'Connect'
+    } else if (!r.proxyIp || r.proxyIp === proxyList[idx]?.ip) {
+      // Connected but verification failed — proxy not routing HTTPS
+      btn.textContent = 'Not routing'
+      btn.style.color = 'var(--red)'
+      setTimeout(() => {
+        btn.disabled = false
+        btn.textContent = 'Retry'
+        btn.style.color = ''
+      }, 3000)
+    }
+  }
+})
+
+// ── IPC: receive state pushes ─────────────────────────────────────────────────
+
+api.onProxyState(applyState)
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+async function init() {
+  try {
+    const s = await api.proxyGetState()
+    applyState(s)
+  } catch (_) {}
+}
+
+init()
+</script>
+</body>
+</html>

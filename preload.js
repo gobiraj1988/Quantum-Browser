@@ -77,6 +77,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ctxSavePdf: (wcId) => ipcRenderer.invoke('ctx-save-pdf', wcId),
   ctxInspect: (data) => ipcRenderer.invoke('ctx-inspect',  data),
 
+  // ── Performance monitor ───────────────────────────────────────────────────
+  onPerfUpdate:    (cb) => ipcRenderer.on('perf-update', (_, d) => cb(d)),
+  reportPageLoad:  (ms) => ipcRenderer.send('perf-page-load', ms),
+  onSecurityWarn:  (cb) => ipcRenderer.on('security-warning', (_, d) => cb(d)),
+
+  // ── DNS prefetch ──────────────────────────────────────────────────────────
+  dnsPrefetch: (hosts) => ipcRenderer.send('dns-prefetch', hosts),
+
   // ── Proxy / VPN ─────────────────────────────────────────────────────────────
   proxyGetState:         ()      => ipcRenderer.invoke('proxy-get-state'),
   proxyFetchList:        (ctry)  => ipcRenderer.invoke('proxy-fetch-list',        ctry),

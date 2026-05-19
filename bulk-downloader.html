@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bulk Downloader</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #202124;
+      --bg2:    #2a2b2f;
+      --bg3:    #35363a;
+      --border: rgba(255,255,255,0.08);
+      --accent: #8ab4f8;
+      --green:  #81c995;
+      --yellow: #fbbf24;
+      --red:    #f28b82;
+      --purple: #c084fc;
+      --text:   #e8eaed;
+      --muted:  #9aa0a6;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px; overflow: hidden; }
+
+    #app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* ── Header ────────────────────────────────────────────────────────────── */
+    #header {
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      padding: 13px 18px 12px; flex-shrink: 0;
+      display: flex; align-items: center; gap: 10px;
+    }
+    #header svg { color: var(--purple); flex-shrink: 0; }
+    #header h1 { font-size: 14px; font-weight: 600; flex: 1; }
+    #hdr-summary { font-size: 11px; color: var(--muted); }
+
+    /* ── Main ──────────────────────────────────────────────────────────────── */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden;
+      padding: 14px; gap: 11px; }
+
+    .sec-label { font-size: 10.5px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+
+    /* URL textarea */
+    #url-box { flex-shrink: 0; }
+    #url-textarea {
+      width: 100%; height: 110px;
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px; padding: 10px 12px; resize: none; line-height: 1.65;
+      outline: none; transition: border-color 0.15s;
+    }
+    #url-textarea:focus { border-color: var(--accent); }
+    #url-textarea::placeholder { color: #4a4d51; }
+
+    /* Toolbar */
+    #toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+
+    select {
+      background: var(--bg3); color: var(--text);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 7px;
+      padding: 7px 10px; font-size: 12px; cursor: pointer; outline: none;
+    }
+    select:focus { border-color: var(--accent); }
+
+    .btn {
+      padding: 7px 13px; border-radius: 7px; border: none;
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: opacity 0.12s, background 0.12s; white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-detect  { background: var(--bg3); color: var(--text); border: 1px solid rgba(255,255,255,0.1); }
+    .btn-detect:hover:not(:disabled)  { background: #42444a; }
+    .btn-start   { background: var(--accent); color: #1a1a2e; font-weight: 700; }
+    .btn-start:hover:not(:disabled)   { background: #aecbfa; }
+    .btn-clear   { background: rgba(242,139,130,0.1); color: var(--red); border: 1px solid rgba(242,139,130,0.2); }
+    .btn-clear:hover:not(:disabled)   { background: rgba(242,139,130,0.2); }
+    .btn-csv     { background: rgba(129,201,149,0.1); color: var(--green); border: 1px solid rgba(129,201,149,0.2); }
+    .btn-csv:hover:not(:disabled)     { background: rgba(129,201,149,0.2); }
+
+    /* Stats bar */
+    #stats {
+      display: flex; align-items: center; gap: 18px; flex-shrink: 0;
+      background: var(--bg2); border-radius: 8px; padding: 8px 14px;
+    }
+    .stat { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-active  { background: var(--accent); }
+    .dot-queued  { background: var(--muted); }
+    .dot-done    { background: var(--green); }
+    .dot-failed  { background: var(--red); }
+    .dot-skipped { background: var(--yellow); }
+    .sv { font-weight: 700; }
+    .sl { color: var(--muted); }
+    #stat-concur { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+    /* Queue */
+    #queue-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #queue-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    #queue-list::-webkit-scrollbar { width: 5px; }
+    #queue-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+
+    #queue-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      flex: 1; gap: 10px; color: #4a4d51; padding: 30px; text-align: center;
+    }
+    #queue-empty svg { opacity: 0.35; }
+
+    /* Queue item */
+    .qi {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 5px;
+      transition: border-color 0.2s;
+    }
+    .qi.s-downloading { border-color: rgba(138,180,248,0.4); }
+    .qi.s-done        { border-color: rgba(129,201,149,0.4); }
+    .qi.s-failed      { border-color: rgba(242,139,130,0.35); }
+    .qi.s-retrying    { border-color: rgba(251,191,36,0.35); }
+    .qi.s-duplicate,.qi.s-unsupported { opacity: 0.5; }
+
+    .qi-r1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+    .qi-icon {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    .ic-detecting  { background: #2d2e31; color: var(--muted); animation: spin 1s linear infinite; }
+    .ic-queued     { background: #2d2e31; color: var(--muted); }
+    .ic-downloading{ background: rgba(138,180,248,0.15); color: var(--accent); }
+    .ic-done       { background: rgba(129,201,149,0.15); color: var(--green); }
+    .ic-failed     { background: rgba(242,139,130,0.15); color: var(--red); }
+    .ic-retrying   { background: rgba(251,191,36,0.12);  color: var(--yellow); animation: spin 1.5s linear infinite; }
+    .ic-unsupported{ background: #2d2e31; color: #555; }
+    .ic-duplicate  { background: #2d2e31; color: #555; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .qi-plat {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.4px; padding: 2px 6px; border-radius: 4px; flex-shrink: 0;
+    }
+    .p-youtube    { background: rgba(196,24,24,0.2);   color: #ff7b7b; }
+    .p-tiktok     { background: rgba(105,201,208,0.15);color: #69c9d0; }
+    .p-instagram  { background: rgba(192,132,252,0.15);color: var(--purple); }
+    .p-twitter,.p-x { background: rgba(138,180,248,0.15); color: var(--accent); }
+    .p-facebook   { background: rgba(96,160,248,0.15); color: #60a0f8; }
+    .p-vimeo      { background: rgba(26,183,234,0.15); color: #1ab7ea; }
+    .p-playlist   { background: rgba(251,191,36,0.12); color: var(--yellow); }
+    .p-default    { background: rgba(255,255,255,0.06);color: var(--muted); }
+
+    .qi-name { flex: 1; min-width: 0; overflow: hidden; }
+    .qi-filename { font-size: 12px; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .qi-url { font-size: 11px; color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .qi-rm {
+      background: none; border: none; color: #3c4043; cursor: pointer;
+      font-size: 14px; padding: 1px 4px; border-radius: 3px; flex-shrink: 0; line-height: 1;
+    }
+    .qi-rm:hover { color: var(--red); background: rgba(242,139,130,0.1); }
+
+    .qi-bar-bg { height: 3px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+    .qi-bar    { height: 100%; border-radius: 2px; transition: width 0.3s; background: var(--accent); }
+    .qi-bar.bd { background: var(--green); }
+    .qi-bar.bf { background: var(--red); }
+    .qi-bar.br { background: var(--yellow); }
+
+    .qi-r3 { font-size: 11px; color: var(--muted); }
+    .qi-r3.cd { color: var(--green); }
+    .qi-r3.cf { color: var(--red); }
+    .qi-r3.cr { color: var(--yellow); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div id="header">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="1" x2="8" y2="11"/>
+      <polyline points="4 7 8 11 12 7"/>
+      <line x1="2" y1="14" x2="14" y2="14"/>
+      <line x1="2" y1="1" x2="2" y2="5"/><line x1="14" y1="1" x2="14" y2="5"/>
+    </svg>
+    <h1>Bulk Video Downloader</h1>
+    <span id="hdr-summary"></span>
+  </div>
+
+  <div id="main">
+
+    <div id="url-box">
+      <div class="sec-label">Paste Video URLs — one per line (playlists supported)</div>
+      <textarea id="url-textarea"
+        placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/playlist?list=...&#10;https://tiktok.com/@user/video/...&#10;https://instagram.com/reel/...&#10;https://x.com/user/status/..."></textarea>
+    </div>
+
+    <div id="toolbar">
+      <select id="quality">
+        <option value="1080p">1080p HD</option>
+        <option value="720p" selected>720p HD (recommended)</option>
+        <option value="480p">480p</option>
+        <option value="360p">360p</option>
+        <option value="4k">4K Ultra HD</option>
+        <option value="audio">Audio only (MP3)</option>
+      </select>
+
+      <button class="btn btn-detect" id="btn-detect">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round">
+          <circle cx="5" cy="5" r="3.5"/><line x1="8" y1="8" x2="11" y2="11"/>
+        </svg>
+        Detect URLs
+      </button>
+
+      <button class="btn btn-start" id="btn-start" disabled>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="0.5" x2="6" y2="8.5"/>
+          <polyline points="2.5 5 6 8.5 9.5 5"/>
+          <line x1="1" y1="11" x2="11" y2="11"/>
+        </svg>
+        Download All
+      </button>
+
+      <button class="btn btn-clear" id="btn-clear">Clear</button>
+
+      <button class="btn btn-csv" id="btn-csv" disabled>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1" y="1" width="10" height="10" rx="1"/>
+          <line x1="1" y1="4" x2="11" y2="4"/>
+          <line x1="4" y1="4" x2="4" y2="11"/>
+        </svg>
+        Export CSV
+      </button>
+    </div>
+
+    <div id="stats">
+      <div class="stat"><div class="dot dot-active"></div>
+        <span class="sv" id="s-active">0</span><span class="sl">/ 3 active</span></div>
+      <div class="stat"><div class="dot dot-queued"></div>
+        <span class="sv" id="s-queued">0</span><span class="sl">queued</span></div>
+      <div class="stat"><div class="dot dot-done"></div>
+        <span class="sv" id="s-done">0</span><span class="sl">done</span></div>
+      <div class="stat"><div class="dot dot-failed"></div>
+        <span class="sv" id="s-failed">0</span><span class="sl">failed</span></div>
+      <div class="stat"><div class="dot dot-skipped"></div>
+        <span class="sv" id="s-skipped">0</span><span class="sl">skipped</span></div>
+    </div>
+
+    <div id="queue-wrap">
+      <div class="sec-label" id="q-label">Queue</div>
+      <div id="queue-list">
+        <div id="queue-empty">
+          <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor"
+               stroke-width="1.4" stroke-linecap="round">
+            <rect x="4" y="10" width="36" height="26" rx="3"/>
+            <line x1="12" y1="19" x2="32" y2="19"/>
+            <line x1="12" y1="25" x2="24" y2="25"/>
+          </svg>
+          <p>Paste URLs above and click <strong>Detect URLs</strong></p>
+          <p style="font-size:11px;color:#3c4043">YouTube playlists are automatically expanded</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<script src="bulk-downloader.js"></script>
+</body>
+</html>

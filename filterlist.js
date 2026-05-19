@@ -275,14 +275,44 @@ function parseEasyListText(text) {
 // These domains (and all their subdomains) are NEVER blocked, even if EasyList
 // adds them. Blocking any of these breaks major legitimate functionality.
 const ESSENTIAL_WHITELIST = [
-  'youtube.com',          // YouTube itself
-  'googlevideo.com',      // YouTube video CDN — blocking this breaks ALL video playback
-  'ytimg.com',            // YouTube images and thumbnails
-  'ggpht.com',            // Google channel icons / Google Photos
+  // ── YouTube ───────────────────────────────────────────────────────────────
+  'youtube.com',
+  'googlevideo.com',      // YouTube video CDN
+  'ytimg.com',            // YouTube thumbnails/images
+  'ggpht.com',            // Google channel icons
   'youtube-nocookie.com', // Embedded YouTube player
-  'accounts.google.com',  // Google login (needed for YouTube sign-in)
-  'googleapis.com',       // Google APIs (YouTube Data API, auth tokens, etc.)
-  'gstatic.com',          // Google static assets (fonts, icons, CSS)
+  'accounts.google.com',  // Google login
+  'googleapis.com',       // Google APIs
+  'gstatic.com',          // Google static assets
+
+  // ── TikTok ────────────────────────────────────────────────────────────────
+  'tiktok.com',
+  'tiktokcdn.com',        // TikTok video/image CDN
+  'tiktokcdn-us.com',
+  'tiktokv.com',          // TikTok video delivery
+  'muscdn.com',           // TikTok music/media CDN
+  'bytedance.com',        // ByteDance (TikTok parent)
+  'byteoversea.com',      // ByteDance overseas CDN
+  'ttwstatic.com',        // TikTok static assets
+  'ibytedtos.com',        // TikTok image CDN
+  'ipstatp.com',          // TikTok avatar/image CDN
+  'sgsnssdk.com',         // TikTok SDK
+  'snssdk.com',           // TikTok SDK
+
+  // ── Instagram ─────────────────────────────────────────────────────────────
+  'instagram.com',
+  'cdninstagram.com',     // Instagram media CDN
+  'instagramstatic.com',
+
+  // ── Facebook ──────────────────────────────────────────────────────────────
+  'facebook.com',
+  'fbcdn.net',            // Facebook media CDN (videos, images)
+  'fbsbx.com',            // Facebook static assets
+
+  // ── Twitter / X ───────────────────────────────────────────────────────────
+  'twitter.com',
+  'x.com',
+  'twimg.com',            // Twitter images and video CDN
 ]
 
 module.exports = { BLOCKED_DOMAINS, BLOCKED_PATTERNS, ESSENTIAL_WHITELIST, parseEasyListText }

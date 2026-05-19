@@ -2,6 +2,8 @@
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ADBLOCKER.JS  —  Network-level ad/tracker blocking + settings backend
+//  OPTIMIZED: Bloom filter for O(1) domain pre-check, hostname result cache,
+//  fast URL parsing without new URL(), pre-compiled pattern RegExp.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { session, ipcMain, net, app, BrowserWindow } = require('electron')
@@ -9,9 +11,48 @@ const path = require('path')
 const fs   = require('fs')
 const { BLOCKED_DOMAINS, BLOCKED_PATTERNS, ESSENTIAL_WHITELIST, parseEasyListText } = require('./filterlist')
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Bloom filter — fast probabilistic "is this hostname blocked?" check.
+//  2^21 bits (256 KB), 4 hash functions → ~0.46% false-positive rate at 100K entries.
+//  False positives cause an extra Set.has() call (harmless).
+//  False negatives are impossible — if bloom says NO, it's definitely clean.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class BloomFilter {
+  constructor(bits = 1 << 21, hashes = 4) {
+    this.m = bits
+    this.k = hashes
+    this.b = new Uint32Array(Math.ceil(bits / 32))
+  }
+
+  _h(s, seed) {
+    let h = seed
+    for (let i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 0x9e3779b9)
+      h ^= h >>> 16
+    }
+    return ((h >>> 0) % this.m + this.m) % this.m
+  }
+
+  add(s) {
+    for (let i = 0; i < this.k; i++) {
+      const bit = this._h(s, 0x811c9dc5 + i * 0x27d4eb2f)
+      this.b[bit >>> 5] |= 1 << (bit & 31)
+    }
+  }
+
+  test(s) {
+    for (let i = 0; i < this.k; i++) {
+      const bit = this._h(s, 0x811c9dc5 + i * 0x27d4eb2f)
+      if (!(this.b[bit >>> 5] & (1 << (bit & 31)))) return false
+    }
+    return true   // probably in set (may be false positive)
+  }
+}
+
 // ─── Runtime state ────────────────────────────────────────────────────────────
 
-let blockedCount     = 0        // session counter (shown in toolbar)
+let blockedCount     = 0
 let isEnabled        = true
 let strictMode       = false
 let mainWin          = null
@@ -20,26 +61,87 @@ let settingsFilePath = ''
 let statsFilePath    = ''
 let alreadyInit      = false
 
-// Live blocking sets
 const blockedDomains     = new Set(BLOCKED_DOMAINS)
 const whitelistedDomains = new Set()
 const urlPatterns        = [...BLOCKED_PATTERNS]
 const essentialSet       = new Set(ESSENTIAL_WHITELIST)
 
-// User-managed (persisted to disk)
-const userWhitelist = new Set()
-let   customRules   = []
+const userWhitelist  = new Set()
+let   customRules    = []
 
-// Blocked log — circular buffer, most-recent at end
 const BLOCKED_LOG_MAX = 200
 let blockedLog = []
 
-// Daily + all-time stats (persisted)
-let todayDate    = ''
-let todayCount   = 0
-let allTimeCount = 0
+let todayDate = '', todayCount = 0, allTimeCount = 0
 
-// Strict-mode: extra categories that aren't in EasyList by default
+// ─── Bloom filter (populated after blockedDomains is ready) ──────────────────
+
+const bloom = new BloomFilter()
+
+function rebuildBloom() {
+  // Reset bits
+  bloom.b.fill(0)
+  for (const d of blockedDomains) bloom.add(d)
+}
+
+// ─── Hostname result cache ─────────────────────────────────────────────────────
+// Caches the final shouldBlock() result per hostname.
+// Same hostname can appear in hundreds of requests per page — cache it once.
+
+const resultCache = new Map()   // hostname -> boolean
+const RESULT_CACHE_MAX = 20000
+
+function getCached(hostname) {
+  return resultCache.has(hostname) ? resultCache.get(hostname) : null
+}
+
+function setCached(hostname, result) {
+  if (resultCache.size >= RESULT_CACHE_MAX) {
+    const firstKey = resultCache.keys().next().value
+    resultCache.delete(firstKey)
+  }
+  resultCache.set(hostname, result)
+}
+
+function invalidateCache() {
+  resultCache.clear()
+}
+
+// ─── Pre-compiled pattern RegExp ──────────────────────────────────────────────
+// Converts urlPatterns array into a single RegExp — one test() call
+// instead of looping through every pattern with String.includes().
+
+let compiledPatterns = null
+
+function rebuildPatternRegex() {
+  const all = [...urlPatterns, ...customRules.filter(Boolean)]
+  if (!all.length) { compiledPatterns = null; return }
+  const escaped = all.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  compiledPatterns = new RegExp(escaped.join('|'), 'i')
+}
+
+// ─── Fast hostname extraction (avoids new URL() object creation) ─────────────
+// Parses hostname directly from the URL string — ~5x faster than new URL().
+
+function fastHostname(url) {
+  const ci = url.indexOf('//')
+  if (ci === -1) return ''
+  let start = ci + 2
+  let end   = start
+  const len = url.length
+  while (end < len) {
+    const c = url.charCodeAt(end)
+    // stop at '/', ':', '?', '#'
+    if (c === 47 || c === 58 || c === 63 || c === 35) break
+    end++
+  }
+  const raw = url.slice(start, end)
+  // Return lowercase (avoid allocating a new string if already lower-case)
+  return raw === raw.toLowerCase() ? raw : raw.toLowerCase()
+}
+
+// ─── Strict-mode extra categories ────────────────────────────────────────────
+
 const STRICT_DOMAINS = new Set([
   'hotjar.com', 'mouseflow.com', 'fullstory.com', 'logrocket.com',
   'mixpanel.com', 'amplitude.com', 'segment.com', 'heap.io',
@@ -62,9 +164,9 @@ const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
 function loadSettings() {
   try {
     const d = JSON.parse(fs.readFileSync(settingsFilePath, 'utf8'))
-    if (Array.isArray(d.userWhitelist))   d.userWhitelist.forEach(x => userWhitelist.add(x))
-    if (Array.isArray(d.customRules))     customRules = d.customRules
-    if (typeof d.strictMode === 'boolean') strictMode = d.strictMode
+    if (Array.isArray(d.userWhitelist))    d.userWhitelist.forEach(x => userWhitelist.add(x))
+    if (Array.isArray(d.customRules))      customRules = d.customRules
+    if (typeof d.strictMode === 'boolean') strictMode  = d.strictMode
   } catch (_) {}
 }
 
@@ -93,42 +195,28 @@ function saveStats() {
 
 function getTodayStr() { return new Date().toISOString().slice(0, 10) }
 
-// ─── Platform-specific ad URL patterns ───────────────────────────────────────
+// ─── Platform ad URL patterns ─────────────────────────────────────────────────
 // Checked BEFORE the essential whitelist so youtube.com/googlevideo.com/
 // facebook.com ad requests are blocked even though those domains are whitelisted.
 
 function isPlatformAdUrl(url) {
   const u = url.toLowerCase()
-
-  // ── YouTube / Google video ads ─────────────────────────────────────────────
-  // Ad video streams carry adsid= in the query string; normal video CDN does not
   if (u.includes('googlevideo.com/videoplayback') && (u.includes('adsid=') || u.includes('adformat='))) return true
-  // YouTube ad-specific API endpoints
-  if (u.includes('youtube.com/api/stats/ads'))                return true
-  if (u.includes('youtube.com/pagead/'))                      return true
-  if (u.includes('youtube.com/ptracking'))                    return true
+  if (u.includes('youtube.com/api/stats/ads'))       return true
+  if (u.includes('youtube.com/pagead/'))             return true
+  if (u.includes('youtube.com/ptracking'))           return true
   if (u.includes('youtube.com/get_video_info') && u.includes('adformat')) return true
-  // DoubleClick subdomains not already caught by the domain list
-  if (u.includes('googleads.g.doubleclick.net'))              return true
-  if (u.includes('static.doubleclick.net'))                   return true
-
-  // ── Facebook ads ───────────────────────────────────────────────────────────
-  if (u.includes('facebook.com/ads/'))                        return true
-  if (u.includes('an.facebook.com/'))                         return true
-  // Facebook SDK loader — used to serve Audience Network ads on third-party sites
+  if (u.includes('googleads.g.doubleclick.net'))     return true
+  if (u.includes('static.doubleclick.net'))          return true
+  if (u.includes('facebook.com/ads/'))               return true
+  if (u.includes('an.facebook.com/'))                return true
   if (u.includes('connect.facebook.net/') && u.includes('sdk.js')) return true
-  // Facebook ad image/script CDN paths
-  if (u.includes('fbcdn.net/') && u.includes('/ads/'))        return true
-
+  if (u.includes('fbcdn.net/') && u.includes('/ads/')) return true
   return false
 }
 
-// ─── URL analysis (runs on EVERY request — keep fast) ─────────────────────────
-
-function getHostname(url) {
-  try   { return new URL(url).hostname.toLowerCase() }
-  catch { return '' }
-}
+// ─── Domain walking ───────────────────────────────────────────────────────────
+// Walk hostname + all parent domains against a set.
 
 function walkDomains(hostname, set) {
   if (!hostname) return false
@@ -140,13 +228,31 @@ function walkDomains(hostname, set) {
   return false
 }
 
-const isEssentialDomain  = h => walkDomains(h, essentialSet)
+const isEssentialDomain = h => walkDomains(h, essentialSet)
 const isUserWhitelisted  = h => walkDomains(h, userWhitelist)
 const isStrictBlocked    = h => strictMode && walkDomains(h, STRICT_DOMAINS)
 
 function isDomainBlocked(hostname) {
   if (!hostname) return false
-  if (blockedDomains.has(hostname))     return true
+
+  // Bloom filter fast-path: if bloom says NO, it's definitely not blocked.
+  // Saves the Set.has() + subdomain walk for the majority of clean domains.
+  if (!bloom.test(hostname)) {
+    // Still need to check parent domains (e.g. "ads.evil.com" when only "evil.com" is in bloom)
+    const parts = hostname.split('.')
+    let parentBlocked = false
+    for (let i = 1; i < parts.length - 1; i++) {
+      const parent = parts.slice(i).join('.')
+      if (bloom.test(parent) && blockedDomains.has(parent)) {
+        parentBlocked = true
+        break
+      }
+    }
+    if (!parentBlocked) return false
+  }
+
+  // Bloom said maybe — do the authoritative Set check
+  if (blockedDomains.has(hostname)) return true
   if (whitelistedDomains.has(hostname)) return false
   const parts = hostname.split('.')
   for (let i = 1; i < parts.length - 1; i++) {
@@ -157,26 +263,40 @@ function isDomainBlocked(hostname) {
 }
 
 function isPatternBlocked(url) {
-  const lower = url.toLowerCase()
-  if (urlPatterns.some(p => lower.includes(p))) return true
-  if (customRules.some(r => r && lower.includes(r.toLowerCase()))) return true
-  return false
+  return compiledPatterns ? compiledPatterns.test(url) : false
 }
+
+// ─── Main blocking decision ───────────────────────────────────────────────────
 
 function shouldBlock(url) {
   if (!isEnabled) return false
-  if (!url || url.startsWith('file://') || url.startsWith('chrome-extension://') ||
-      url.startsWith('about:') || url.startsWith('devtools:')) return false
+  if (!url) return false
 
-  // Platform ad URLs are blocked BEFORE the essential-domain check so that
-  // ad requests on whitelisted domains (youtube.com, googlevideo.com, facebook.com)
-  // are still caught.
+  // Skip non-web schemes
+  const schemeEnd = url.indexOf(':')
+  if (schemeEnd > 0) {
+    const scheme = url.slice(0, schemeEnd)
+    if (scheme === 'file' || scheme === 'about' || scheme === 'devtools' ||
+        scheme === 'chrome-extension' || scheme === 'data' || scheme === 'blob') return false
+  }
+
+  // Platform ad check (before essential whitelist)
   if (isPlatformAdUrl(url)) return true
 
-  const h = getHostname(url)
-  if (isEssentialDomain(h)) return false   // YouTube, Google APIs, etc.
-  if (isUserWhitelisted(h))  return false   // user's own whitelist
-  return isDomainBlocked(h) || isPatternBlocked(url) || isStrictBlocked(h)
+  const h = fastHostname(url)
+
+  // Check result cache first
+  const cached = getCached(h)
+  if (cached !== null) return cached
+
+  // Compute result
+  let result = false
+  if (!isEssentialDomain(h) && !isUserWhitelisted(h)) {
+    result = isDomainBlocked(h) || isPatternBlocked(url) || isStrictBlocked(h)
+  }
+
+  setCached(h, result)
+  return result
 }
 
 // ─── IPC broadcast helpers ────────────────────────────────────────────────────
@@ -193,13 +313,11 @@ function sendState() {
 
 function buildPayload() {
   return {
-    enabled:       isEnabled,
-    strictMode,
-    userWhitelist: [...userWhitelist],
-    customRules,
-    blockedLog:    [...blockedLog].reverse(),   // most-recent first
-    stats:         { todayDate, todayCount, allTimeCount, sessionCount: blockedCount },
-    domains:       blockedDomains.size,
+    enabled: isEnabled, strictMode,
+    userWhitelist: [...userWhitelist], customRules,
+    blockedLog: [...blockedLog].reverse(),
+    stats: { todayDate, todayCount, allTimeCount, sessionCount: blockedCount },
+    domains: blockedDomains.size,
   }
 }
 
@@ -240,15 +358,12 @@ async function refreshFilterLists() {
   for (const src of FILTER_SOURCES) {
     try {
       sendUpdateStatus({ phase: 'downloading', name: src.name })
-      console.log(`[AdBlocker] Downloading ${src.name}…`)
       const text  = await fetchText(src.url)
       const rules = parseEasyListText(text)
-
       rules.blocked.forEach(d => {
         if (!isEssentialDomain(d) && !blockedDomains.has(d)) { blockedDomains.add(d); newDomains++ }
       })
       rules.whitelisted.forEach(d => whitelistedDomains.add(d))
-
       console.log(`[AdBlocker] ${src.name}: +${rules.blocked.size} domains`)
     } catch (e) {
       console.log(`[AdBlocker] ${src.name} unavailable: ${e.message}`)
@@ -257,6 +372,8 @@ async function refreshFilterLists() {
   }
 
   if (newDomains > 0) {
+    rebuildBloom()                          // update bloom with new domains
+    invalidateCache()                       // clear stale hostname decisions
     console.log(`[AdBlocker] Total: ${blockedDomains.size} domains`)
     try {
       fs.writeFileSync(cacheFilePath,
@@ -278,9 +395,9 @@ function isCacheFresh() {
 // ─── IPC registration ─────────────────────────────────────────────────────────
 
 function setupIPC() {
-  // Existing toggle / state (used by toolbar shield button)
   ipcMain.on('adblocker-toggle', (_, enabled) => {
     isEnabled = Boolean(enabled)
+    invalidateCache()
     console.log(`[AdBlocker] ${isEnabled ? 'Enabled' : 'Disabled'}`)
     sendState()
     broadcastSettingsUpdate()
@@ -290,19 +407,19 @@ function setupIPC() {
     enabled: isEnabled, count: blockedCount, domains: blockedDomains.size,
   }))
 
-  // Settings panel APIs
   ipcMain.handle('adblocker-get-settings', () => buildPayload())
 
   ipcMain.handle('adblocker-add-whitelist', (_, domain) => {
     const d = (domain || '').trim().toLowerCase()
       .replace(/^https?:\/\//, '').replace(/\/.*$/, '')
-    if (d) { userWhitelist.add(d); saveSettings() }
+    if (d) { userWhitelist.add(d); saveSettings(); invalidateCache() }
     return [...userWhitelist]
   })
 
   ipcMain.handle('adblocker-remove-whitelist', (_, domain) => {
     userWhitelist.delete(domain)
     saveSettings()
+    invalidateCache()
     return [...userWhitelist]
   })
 
@@ -313,19 +430,27 @@ function setupIPC() {
 
   ipcMain.handle('adblocker-add-custom-rule', (_, rule) => {
     const r = (rule || '').trim().toLowerCase()
-    if (r && !customRules.includes(r)) { customRules.push(r); saveSettings() }
+    if (r && !customRules.includes(r)) {
+      customRules.push(r)
+      saveSettings()
+      rebuildPatternRegex()
+      invalidateCache()
+    }
     return customRules
   })
 
   ipcMain.handle('adblocker-remove-custom-rule', (_, rule) => {
     customRules = customRules.filter(r => r !== rule)
     saveSettings()
+    rebuildPatternRegex()
+    invalidateCache()
     return customRules
   })
 
   ipcMain.handle('adblocker-toggle-strict', (_, enabled) => {
     strictMode = Boolean(enabled)
     saveSettings()
+    invalidateCache()
     console.log(`[AdBlocker] Strict mode ${strictMode ? 'ON' : 'OFF'}`)
     return strictMode
   })
@@ -351,23 +476,24 @@ function init(win) {
   loadSettings()
   loadStats()
 
+  // Build bloom filter and compile patterns before the first request arrives
+  rebuildBloom()
+  rebuildPatternRegex()
+
   session.defaultSession.webRequest.onBeforeRequest(
     { urls: ['*://*/*'] },
     (details, callback) => {
       if (shouldBlock(details.url)) {
         blockedCount++
 
-        // Daily stats
         const today = getTodayStr()
         if (today !== todayDate) { todayDate = today; todayCount = 0 }
         todayCount++
         allTimeCount++
 
-        // Blocked log
-        blockedLog.push({ url: details.url, domain: getHostname(details.url), ts: Date.now() })
+        blockedLog.push({ url: details.url, domain: fastHostname(details.url), ts: Date.now() })
         if (blockedLog.length > BLOCKED_LOG_MAX) blockedLog.shift()
 
-        // Flush stats every 10 blocks to avoid disk thrashing
         if (allTimeCount % 10 === 0) saveStats()
 
         sendCount()

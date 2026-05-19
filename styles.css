@@ -394,6 +394,7 @@ html, body {
   background: var(--bg-toolbar);
   border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
+  gap: 8px;
 }
 
 #status-text {
@@ -402,8 +403,30 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 70%;
+  flex: 1;
+  min-width: 0;
 }
+
+/* Performance bar */
+#perf-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.perf-item {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: color 0.4s;
+}
+
+.perf-green  { color: #81c995; }
+.perf-yellow { color: #fbbf24; }
+.perf-red    { color: #f28b82; }
 
 /* ── Privacy Score Widget ─────────────────────────────────────────────────── */
 

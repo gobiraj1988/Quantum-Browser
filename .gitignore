@@ -1,1 +1,42 @@
+# Dependencies
 node_modules/
+
+# Build output
+dist/
+out/
+build/
+
+# Electron packager / builder artifacts
+*.AppImage
+*.dmg
+*.exe
+*.deb
+*.rpm
+*.snap
+
+# Logs
+*.log
+npm-debug.log*
+electron-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Env / secrets (never commit API keys)
+.env
+.env.local
+*.env
+
+# Temp / backup
+*.bak
+*.tmp
+*.orig

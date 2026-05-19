@@ -370,6 +370,11 @@
   <!-- ══════════════ STATUS BAR ═══════════════════════════════════════════ -->
   <div id="status-bar">
     <span id="status-text">Ready</span>
+    <div id="perf-bar">
+      <span id="perf-load" class="perf-item perf-green" title="Last page load time">⏱ —</span>
+      <span id="perf-ram"  class="perf-item perf-green" title="Total browser RAM usage">RAM —</span>
+      <span id="perf-cpu"  class="perf-item perf-green" title="Main process CPU">CPU —</span>
+    </div>
   </div>
 
 </div>
@@ -747,20 +752,63 @@
 })()
 </script>
 
-<!-- Main browser logic -->
+<!-- Critical path: renderer + context menu load immediately -->
 <script src="renderer.js"></script>
-<!-- Free AI config — must load before everything else -->
-<script src="ai-config.js"></script>
-<!-- AI sidebar (free APIs, no key needed) -->
-<script src="ai-sidebar.js"></script>
-<!-- Full-page translator: LibreTranslate + AI fallback (adds toolbar button) -->
-<script src="translator.js"></script>
-<!-- Reading mode: clean article view + AI summary (adds toolbar button) -->
-<script src="reading-mode.js"></script>
-<!-- Context menu AI tools + smart URL suggestions -->
-<script src="ai-tools.js"></script>
-<!-- Smart right-click context menu -->
 <script src="context-menu.js"></script>
+
+<!-- Renderer-side lazy loader — defers heavy scripts until first use -->
+<script>
+;(function () {
+  'use strict'
+  const loaded = new Set()
+
+  function load(src) {
+    if (loaded.has(src)) return
+    loaded.add(src)
+    const s = document.createElement('script')
+    s.src = src
+    document.body.appendChild(s)
+  }
+
+  // ai-config must precede ai-sidebar
+  function loadAI() { load('ai-config.js'); load('ai-sidebar.js') }
+
+  // Load AI sidebar when user clicks the AI button
+  const btnAi = document.getElementById('btn-ai')
+  if (btnAi) btnAi.addEventListener('click', loadAI, { once: true })
+
+  // Load translator when url-changed fires (page is loaded, user may want translate)
+  document.addEventListener('url-changed', function onFirstUrl() {
+    load('translator.js')
+    load('reading-mode.js')
+    load('ai-tools.js')
+    document.removeEventListener('url-changed', onFirstUrl)
+  })
+})()
+</script>
+
+<!-- Performance bar updater -->
+<script>
+;(function () {
+  'use strict'
+  const loadEl = document.getElementById('perf-load')
+  const ramEl  = document.getElementById('perf-ram')
+  const cpuEl  = document.getElementById('perf-cpu')
+  if (!loadEl || !ramEl || !cpuEl) return
+
+  const COLOR = { green: 'perf-green', yellow: 'perf-yellow', red: 'perf-red' }
+
+  function applyColor(el, color) {
+    el.className = 'perf-item ' + (COLOR[color] || COLOR.green)
+  }
+
+  window.electronAPI?.onPerfUpdate?.(({ ram, cpu, load, ramColor, cpuColor, loadColor }) => {
+    loadEl.textContent = '⏱ ' + load;  applyColor(loadEl, loadColor)
+    ramEl.textContent  = 'RAM ' + ram;  applyColor(ramEl,  ramColor)
+    cpuEl.textContent  = 'CPU ' + cpu;  applyColor(cpuEl,  cpuColor)
+  })
+})()
+</script>
 
 <!-- Ad blocker UI — small standalone script, no changes to renderer.js needed -->
 <script>
