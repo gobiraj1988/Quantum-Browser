@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign In — MyBrowser</title>
+<script src="supabase-config.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080812;--card:rgba(255,255,255,.045);--border:rgba(255,255,255,.09);
+  --text:#e2e8f0;--muted:#64748b;--sub:#94a3b8;
+  --pri:#7c3aed;--pri-glow:rgba(124,58,237,.28);--pri-light:rgba(124,58,237,.12);
+  --acc:#06b6d4;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;
+}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:16px;font-size:14px;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 55% 45% at 10% 10%,rgba(124,58,237,.16) 0%,transparent 70%),
+    radial-gradient(ellipse 50% 50% at 90% 80%,rgba(6,182,212,.1) 0%,transparent 70%);
+  animation:bgp 10s ease-in-out infinite alternate;
+}
+@keyframes bgp{from{opacity:.7}to{opacity:1}}
+
+.titlebar{
+  position:fixed;top:0;left:0;right:0;height:36px;display:flex;
+  align-items:center;justify-content:space-between;padding:0 12px;
+  -webkit-app-region:drag;z-index:100;
+  background:rgba(8,8,18,.7);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+.titlebar-title{font-size:12px;color:var(--sub);font-weight:500;-webkit-app-region:no-drag}
+.tbtn{
+  width:24px;height:24px;border-radius:6px;border:none;cursor:pointer;
+  background:rgba(255,255,255,.06);color:var(--sub);font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;-webkit-app-region:no-drag;
+}
+.tbtn:hover{background:rgba(239,68,68,.25);color:#fff}
+
+.scroll{
+  margin-top:36px;width:100%;max-width:440px;
+  height:calc(100vh - 36px);overflow-y:auto;padding:20px 0 32px;
+}
+.scroll::-webkit-scrollbar{width:4px}
+.scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:20px;padding:28px;position:relative;
+  backdrop-filter:blur(24px);
+  box-shadow:0 0 60px rgba(124,58,237,.08),0 20px 60px rgba(0,0,0,.45);
+}
+
+.logo-row{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.logo-icon{
+  width:44px;height:44px;border-radius:12px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--pri),var(--acc));
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+  box-shadow:0 0 24px var(--pri-glow);
+}
+.logo-text h1{
+  font-size:18px;font-weight:700;
+  background:linear-gradient(135deg,#fff,rgba(255,255,255,.7));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.logo-text p{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* ── Auth method tabs ─────────────────────────────────────────────────────── */
+.tabs{
+  display:flex;background:rgba(255,255,255,.04);border-radius:10px;
+  padding:3px;margin-bottom:20px;border:1px solid var(--border);gap:2px;
+}
+.tab{
+  flex:1;padding:7px 4px;border:none;background:none;color:var(--muted);
+  font-size:12px;font-weight:500;border-radius:8px;cursor:pointer;
+  transition:all .2s;white-space:nowrap;
+}
+.tab.active{background:var(--pri);color:#fff;box-shadow:0 0 14px var(--pri-glow)}
+
+/* ── Panels ──────────────────────────────────────────────────────────────── */
+.panel{display:none}
+.panel.active{display:block}
+
+/* ── Fields ──────────────────────────────────────────────────────────────── */
+.field{margin-bottom:14px;position:relative}
+.field label{
+  display:block;font-size:11px;font-weight:600;color:var(--sub);
+  margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px;
+}
+.field input,.field select{
+  width:100%;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);border-radius:10px;
+  color:var(--text);font-size:14px;padding:10px 14px;outline:none;
+  transition:border-color .2s,background .2s,box-shadow .2s;
+}
+.field input:focus{
+  border-color:var(--pri);background:var(--pri-light);
+  box-shadow:0 0 0 3px var(--pri-glow);
+}
+.field input.err{border-color:var(--err)}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:40px}
+.eye-btn{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;
+}
+.eye-btn:hover{color:var(--text)}
+
+.hint{font-size:11px;margin-top:4px;min-height:15px}
+.hint.err{color:var(--err)}
+.hint.ok{color:var(--ok)}
+
+/* ── Remember + forgot ────────────────────────────────────────────────────── */
+.row-between{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.remember{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--sub);cursor:pointer}
+.remember input{accent-color:var(--pri);width:15px;height:15px}
+.forgot{font-size:12px;color:var(--acc);text-decoration:none;background:none;border:none;cursor:pointer}
+.forgot:hover{text-decoration:underline;color:var(--acc)}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn-primary{
+  width:100%;padding:12px;border:none;border-radius:12px;cursor:pointer;
+  background:linear-gradient(135deg,var(--pri),#5b21b6);color:#fff;
+  font-size:15px;font-weight:700;
+  box-shadow:0 0 24px var(--pri-glow);transition:all .2s;margin-bottom:14px;
+}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 0 32px var(--pri-glow)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-secondary{
+  width:100%;padding:11px;border:1px solid rgba(255,255,255,.14);border-radius:12px;
+  background:rgba(255,255,255,.05);color:var(--text);font-size:14px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all .2s;margin-bottom:10px;
+}
+.btn-secondary:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.22)}
+.btn-biometric{
+  width:100%;padding:20px;border:2px dashed rgba(124,58,237,.3);border-radius:16px;
+  background:var(--pri-light);color:var(--text);font-size:14px;font-weight:600;
+  cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;
+  transition:all .2s;margin-bottom:12px;
+}
+.btn-biometric:hover{border-color:var(--pri);background:rgba(124,58,237,.16)}
+.btn-biometric .bio-icon{font-size:36px}
+.btn-biometric .bio-sub{font-size:11px;color:var(--muted);font-weight:400}
+.btn-biometric.unavailable{opacity:.4;cursor:not-allowed}
+
+.or{display:flex;align-items:center;gap:12px;margin-bottom:14px;color:var(--muted);font-size:12px}
+.or::before,.or::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── Brute force warning ─────────────────────────────────────────────────── */
+.lock-banner{
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
+  border-radius:10px;padding:10px 14px;font-size:12px;color:var(--err);
+  margin-bottom:14px;display:none;text-align:center;
+}
+.lock-banner.show{display:block}
+
+/* ── Login history ────────────────────────────────────────────────────────── */
+.history-section{margin-top:18px}
+.history-title{
+  font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;
+  margin-bottom:8px;display:flex;align-items:center;gap:6px;
+}
+.history-title::before{content:'🕐';font-size:13px}
+.history-item{
+  padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.03);
+  border:1px solid var(--border);margin-bottom:5px;
+  display:flex;align-items:center;gap:10px;font-size:12px;
+}
+.history-item .hi-dot{
+  width:7px;height:7px;border-radius:50%;flex-shrink:0;
+}
+.history-item .hi-dot.ok{background:var(--ok)}
+.history-item .hi-dot.fail{background:var(--err)}
+.history-item .hi-body{flex:1;overflow:hidden}
+.history-item .hi-time{font-size:11px;color:var(--muted)}
+.history-item .hi-info{color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.history-empty{font-size:12px;color:var(--muted);text-align:center;padding:8px}
+
+/* ── OTP send panel ──────────────────────────────────────────────────────── */
+.otp-desc{font-size:13px;color:var(--sub);margin-bottom:14px;line-height:1.5}
+.btn-send-otp{
+  width:100%;padding:12px;border:none;border-radius:12px;cursor:pointer;
+  background:linear-gradient(135deg,var(--acc),#0891b2);color:#fff;
+  font-size:15px;font-weight:700;transition:all .2s;margin-bottom:10px;
+}
+.btn-send-otp:hover:not(:disabled){transform:translateY(-1px)}
+.btn-send-otp:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+.footer-link{text-align:center;font-size:13px;color:var(--muted);margin-top:16px}
+.footer-link a{color:var(--acc);text-decoration:none;font-weight:500}
+.footer-link a:hover{text-decoration:underline}
+
+/* ── Toast + spinner ─────────────────────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:#1e1b2e;border:1px solid var(--border);border-radius:10px;
+  padding:10px 18px;font-size:13px;font-weight:500;opacity:0;max-width:360px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:999;transition:transform .3s,opacity .3s;
+  text-align:center;
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.err-toast{border-color:var(--err);color:var(--err)}
+.toast.ok-toast{border-color:var(--ok);color:var(--ok)}
+.loading-overlay{
+  position:fixed;inset:0;background:rgba(8,8,18,.8);z-index:200;
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;
+  backdrop-filter:blur(4px);
+}
+.loading-overlay.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid rgba(124,58,237,.2);
+  border-top-color:var(--pri);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--sub);font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- Title bar -->
+<div class="titlebar">
+  <span class="titlebar-title">⚡ MyBrowser — Sign In</span>
+  <div style="-webkit-app-region:no-drag">
+    <button class="tbtn" onclick="authClose()">✕</button>
+  </div>
+</div>
+
+<div class="scroll">
+<div class="card">
+
+  <!-- Logo -->
+  <div class="logo-row">
+    <div class="logo-icon">🌐</div>
+    <div class="logo-text">
+      <h1>Welcome Back</h1>
+      <p id="last-login-line">Sign in to your account</p>
+    </div>
+  </div>
+
+  <!-- Brute-force lock banner -->
+  <div class="lock-banner" id="lock-banner">
+    🔒 Account temporarily locked. Try again in <strong id="lock-timer">15:00</strong>
+  </div>
+
+  <!-- Method tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="setTab('pw')">🔑 Password</button>
+    <button class="tab"        onclick="setTab('otp')">📧 OTP</button>
+    <button class="tab"        onclick="setTab('bio')">🫐 Biometric</button>
+  </div>
+
+  <!-- ── Password panel ─────────────────────────────────────────────────── -->
+  <div class="panel active" id="panel-pw">
+    <div class="field">
+      <label>Email or Username</label>
+      <input type="text" id="f-identifier" placeholder="email@example.com or @username"
+             autocomplete="username" oninput="clearLock()">
+      <div class="hint" id="h-identifier"></div>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <div class="pw-wrap">
+        <input type="password" id="f-password" placeholder="Your password"
+               autocomplete="current-password"
+               onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="eye-btn" onclick="toggleEye('f-password',this)" tabindex="-1">👁</button>
+      </div>
+    </div>
+    <div class="row-between">
+      <label class="remember">
+        <input type="checkbox" id="f-remember"> Remember this device for 30 days
+      </label>
+      <button class="forgot" onclick="doForgot()">Forgot password?</button>
+    </div>
+    <button class="btn-primary" id="btn-login" onclick="doLogin()">Sign In</button>
+
+    <div class="or">or</div>
+    <button class="btn-secondary" onclick="doGoogle()">
+      <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continue with Google
+    </button>
+  </div>
+
+  <!-- ── OTP panel ──────────────────────────────────────────────────────── -->
+  <div class="panel" id="panel-otp">
+    <p class="otp-desc">Enter your email or phone number and we'll send you a one-time code to sign in — no password needed.</p>
+    <div class="field">
+      <label>Email or Phone</label>
+      <input type="text" id="f-otp-target" placeholder="email@example.com or +1234567890"
+             autocomplete="username">
+    </div>
+    <button class="btn-send-otp" id="btn-send-otp" onclick="doSendOtp()">Send OTP Code</button>
+
+    <div class="or">or</div>
+    <button class="btn-secondary" onclick="doGoogle()">
+      <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continue with Google
+    </button>
+  </div>
+
+  <!-- ── Biometric panel ────────────────────────────────────────────────── -->
+  <div class="panel" id="panel-bio">
+    <button class="btn-biometric" id="btn-bio" onclick="doBiometric()">
+      <span class="bio-icon">🫐</span>
+      <span>Windows Hello / Fingerprint</span>
+      <span class="bio-sub" id="bio-sub">Checking availability…</span>
+    </button>
+    <p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px;line-height:1.5">
+      Use your device's fingerprint, face, or PIN to sign in securely without a password.
+    </p>
+    <div class="or">or sign in with</div>
+    <button class="btn-secondary" onclick="setTab('pw')">🔑 Password</button>
+    <button class="btn-secondary" onclick="doGoogle()">
+      <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Google
+    </button>
+  </div>
+
+  <!-- Login history -->
+  <div class="history-section" id="history-section" style="display:none">
+    <div class="history-title">Recent Login Activity</div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-link">No account? <a href="#" onclick="goRegister()">Create one free</a></div>
+</div>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Signing in…</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict'
+const api = window.electronAPI
+let lockCountdown = null
+let currentTab = 'pw'
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function setTab(tab) {
+  currentTab = tab
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['pw','otp','bio'][i] === tab)
+  })
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
+  document.getElementById('panel-' + tab).classList.add('active')
+}
+
+// ── Eye toggle ────────────────────────────────────────────────────────────────
+function toggleEye(id, btn) {
+  const el = document.getElementById(id)
+  el.type = el.type === 'password' ? 'text' : 'password'
+  btn.textContent = el.type === 'password' ? '👁' : '🙈'
+}
+
+// ── Toast / loading ───────────────────────────────────────────────────────────
+let toastTimer
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.className = 'toast show' + (type === 'err' ? ' err-toast' : type === 'ok' ? ' ok-toast' : '')
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { t.className = 'toast' }, 3800)
+}
+function setLoading(show, text = 'Signing in…') {
+  document.getElementById('loading').classList.toggle('show', show)
+  document.getElementById('loading-text').textContent = text
+  document.getElementById('btn-login')?.setAttribute('disabled', show ? 'true' : null)
+}
+
+// ── Brute force check ─────────────────────────────────────────────────────────
+function clearLock() { /* user is typing — recheck on submit */ }
+
+async function checkBrute(identifier) {
+  if (!api) return true
+  const bf = await api.authCheckBrute(identifier)
+  if (bf.locked) {
+    showLockBanner(bf.remaining)
+    return false
+  }
+  hideLockBanner()
+  return true
+}
+
+function showLockBanner(seconds) {
+  const banner = document.getElementById('lock-banner')
+  const timer  = document.getElementById('lock-timer')
+  banner.classList.add('show')
+  document.getElementById('btn-login').disabled = true
+  clearInterval(lockCountdown)
+  let s = seconds
+  const tick = () => {
+    const m = Math.floor(s/60), sec = s%60
+    timer.textContent = `${m}:${String(sec).padStart(2,'0')}`
+    if (--s < 0) { clearInterval(lockCountdown); hideLockBanner() }
+  }
+  tick()
+  lockCountdown = setInterval(tick, 1000)
+}
+
+function hideLockBanner() {
+  document.getElementById('lock-banner').classList.remove('show')
+  document.getElementById('btn-login').disabled = false
+}
+
+// ── Get geolocation from IP ───────────────────────────────────────────────────
+async function getGeoInfo() {
+  try {
+    const r = await fetch('https://ipapi.co/json/')
+    const d = await r.json()
+    return { country: d.country_name || '', ip: d.ip || '', city: d.city || '' }
+  } catch {
+    return { country: '', ip: '', city: '' }
+  }
+}
+
+// ── Password login ────────────────────────────────────────────────────────────
+async function doLogin() {
+  const identifier = document.getElementById('f-identifier').value.trim()
+  const password   = document.getElementById('f-password').value
+  const remember   = document.getElementById('f-remember').checked
+
+  if (!identifier) { showToast('Please enter your email or username', 'err'); return }
+  if (!password)   { showToast('Please enter your password', 'err'); return }
+
+  const allowed = await checkBrute(identifier)
+  if (!allowed) return
+
+  setLoading(true)
+  try {
+    const isEmail = identifier.includes('@')
+    const session = isEmail
+      ? await window.SB.signIn(identifier, password)
+      : await window.SB.signInPhone(identifier, password)  // fallback — Supabase needs email
+
+    // Record success
+    if (api) await api.authRecordAttempt({ id: identifier, ok: true })
+
+    // Geo check
+    const geo = await getGeoInfo()
+    const deviceId = api ? await api.authGetDeviceId() : 'unknown'
+
+    // Log the login
+    if (api) {
+      await api.authAddHistory({
+        success: true,
+        method: 'password',
+        identifier,
+        ip: geo.ip,
+        country: geo.country,
+        city: geo.city,
+      })
+    }
+
+    // Save session (main process)
+    if (api) await api.authSaveSession(session)
+    else {
+      window.SB.saveLocalSession(session)
+      showToast('Signed in successfully!', 'ok')
+    }
+
+    if (remember && api) {
+      // Store remember-device flag
+      localStorage.setItem('remember_device', deviceId)
+      localStorage.setItem('remember_expiry', Date.now() + 30 * 24 * 60 * 60 * 1000)
+    }
+
+  } catch (e) {
+    setLoading(false)
+    if (api) await api.authRecordAttempt({ id: identifier, ok: false })
+    if (api) {
+      const geo = await getGeoInfo()
+      await api.authAddHistory({ success: false, method: 'password', identifier, ip: geo.ip, country: geo.country })
+    }
+    const bf = api ? await api.authCheckBrute(identifier) : { locked: false }
+    if (bf.locked) {
+      showLockBanner(bf.remaining)
+      showToast(`Too many failed attempts. Locked for ${Math.ceil(bf.remaining / 60)} minutes.`, 'err')
+    } else {
+      const attemptsLeft = 5 - (bf.attempts || 0)
+      showToast(`Incorrect credentials. ${attemptsLeft > 0 ? attemptsLeft + ' attempt(s) remaining.' : ''}`, 'err')
+    }
+  }
+}
+
+// ── OTP send login ────────────────────────────────────────────────────────────
+async function doSendOtp() {
+  const target = document.getElementById('f-otp-target').value.trim()
+  if (!target) { showToast('Enter your email or phone number', 'err'); return }
+
+  document.getElementById('btn-send-otp').disabled = true
+  try {
+    const isPhone = target.startsWith('+') && /\+\d+/.test(target)
+    if (isPhone) await window.SB.sendPhoneOtp(target)
+    else         await window.SB.sendEmailOtp(target)
+
+    if (api) {
+      await api.authOpenOtp({
+        type: isPhone ? 'sms' : 'email',
+        [isPhone ? 'phone' : 'email']: target,
+        mode: 'login',
+      })
+    } else {
+      window.location.href = `otp-verify.html?type=${isPhone ? 'sms' : 'email'}&${isPhone?'phone':'email'}=${encodeURIComponent(target)}&mode=login`
+    }
+  } catch (e) {
+    showToast(e.message || 'Could not send OTP', 'err')
+    document.getElementById('btn-send-otp').disabled = false
+  }
+}
+
+// ── Biometric ─────────────────────────────────────────────────────────────────
+async function checkBiometricAvailable() {
+  try {
+    const avail = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+    const btn   = document.getElementById('btn-bio')
+    const sub   = document.getElementById('bio-sub')
+    if (avail) {
+      sub.textContent = 'Windows Hello available — tap to sign in'
+    } else {
+      sub.textContent = 'Not available on this device'
+      btn.classList.add('unavailable')
+    }
+    return avail
+  } catch { return false }
+}
+
+async function doBiometric() {
+  const btn = document.getElementById('btn-bio')
+  if (btn.classList.contains('unavailable')) {
+    showToast('Biometric authentication not available on this device', 'err'); return
+  }
+  try {
+    const challenge = new Uint8Array(32)
+    crypto.getRandomValues(challenge)
+    const credential = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        rpId: 'localhost',
+        userVerification: 'required',
+        timeout: 60000,
+      }
+    })
+    if (credential) {
+      // Check locally stored session and validate
+      const session = api ? await api.authGetSession() : window.SB.getLocalSession()
+      if (session?.access_token) {
+        showToast('Biometric verified! Signing in…', 'ok')
+        setTimeout(() => {
+          if (api) api.authSaveSession(session)
+        }, 800)
+      } else {
+        showToast('No saved session — please sign in with password first', 'err')
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'NotAllowedError') showToast('Biometric failed: ' + e.message, 'err')
+  }
+}
+
+// ── Forgot password ───────────────────────────────────────────────────────────
+async function doForgot() {
+  const id = document.getElementById('f-identifier').value.trim()
+  if (!id || !id.includes('@')) { showToast('Enter your email address first', 'err'); return }
+  try {
+    await window.SB.resetPassword(id)
+    showToast('Password reset email sent! Check your inbox.', 'ok')
+  } catch (e) { showToast(e.message || 'Could not send reset email', 'err') }
+}
+
+// ── Google OAuth ──────────────────────────────────────────────────────────────
+async function doGoogle() {
+  if (api) await api.authGoogleLogin(window.SB.URL)
+  else window.open(window.SB.googleAuthUrl(), '_blank')
+}
+
+// ── Navigate ──────────────────────────────────────────────────────────────────
+function goRegister() {
+  if (api) { api.authOpenRegister(); api.authWinClose() }
+}
+function authClose() {
+  if (api) api.authWinClose()
+}
+
+// ── Load history ──────────────────────────────────────────────────────────────
+async function loadHistory() {
+  if (!api) return
+  const hist = await api.authGetHistory()
+  if (!hist || hist.length === 0) return
+  const section = document.getElementById('history-section')
+  const list    = document.getElementById('history-list')
+  section.style.display = ''
+
+  // Set last login in header
+  const last = hist.find(h => h.success)
+  if (last) {
+    const d = new Date(last.ts)
+    document.getElementById('last-login-line').textContent =
+      `Last login: ${d.toLocaleDateString()} · ${last.country || 'Unknown location'}`
+  }
+
+  list.innerHTML = hist.map(h => {
+    const d   = new Date(h.ts)
+    const ago = timeAgo(h.ts)
+    return `<div class="history-item">
+      <div class="hi-dot ${h.success ? 'ok' : 'fail'}"></div>
+      <div class="hi-body">
+        <div class="hi-info">${h.success ? '✓ Signed in' : '✗ Failed attempt'} · ${h.method || 'password'} · ${h.country || 'Unknown'}</div>
+        <div class="hi-time">${ago} · ${h.ip || 'Unknown IP'}</div>
+      </div>
+    </div>`
+  }).join('')
+}
+
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000)
+  if (s < 60)   return 'Just now'
+  if (s < 3600) return Math.floor(s/60) + 'm ago'
+  if (s < 86400)return Math.floor(s/3600) + 'h ago'
+  return Math.floor(s/86400) + 'd ago'
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+checkBiometricAvailable()
+loadHistory()
+</script>
+</body>
+</html>

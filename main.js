@@ -16,6 +16,9 @@ app.commandLine.appendSwitch('enable-features',
 app.commandLine.appendSwitch('disable-features',
   'CalculateNativeWinOcclusion,HardwareMediaKeyHandling,MediaRouter,OutOfBlinkCors')
 
+// ── Auth system ───────────────────────────────────────────────────────────────
+const authSystem = require('./auth-system')
+
 // ── Modules needed before any page request arrives ───────────────────────────
 const safeAdblocker = require('./safe-adblocker')
 const sponsorBlock  = require('./sponsorblock')
@@ -205,6 +208,9 @@ function createWindow() {
   privacy.init(win)
   lazy.init('proxy',      win)   // needed by VPN dot in toolbar on load
   lazy.init('downloader', win)   // needed by download widget on load
+
+  // ── Account / auth system ────────────────────────────────────────────────
+  authSystem.init(win)
 
   // ── Performance monitor ───────────────────────────────────────────────────
   performance.init(win)

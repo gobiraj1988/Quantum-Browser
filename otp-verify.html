@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verify Account — MyBrowser</title>
+<script src="supabase-config.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080812;--card:rgba(255,255,255,.045);--border:rgba(255,255,255,.09);
+  --text:#e2e8f0;--muted:#64748b;--sub:#94a3b8;
+  --pri:#7c3aed;--pri-glow:rgba(124,58,237,.28);--pri-light:rgba(124,58,237,.12);
+  --acc:#06b6d4;--ok:#22c55e;--err:#ef4444;
+}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;font-size:14px;min-height:100vh;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 60% at 50% 30%,rgba(124,58,237,.15) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 50% at 80% 80%,rgba(6,182,212,.1) 0%,transparent 60%);
+  animation:bgp 10s ease-in-out infinite alternate;
+}
+@keyframes bgp{from{opacity:.7}to{opacity:1}}
+
+.titlebar{
+  position:fixed;top:0;left:0;right:0;height:36px;display:flex;
+  align-items:center;justify-content:space-between;padding:0 12px;
+  -webkit-app-region:drag;z-index:100;
+  background:rgba(8,8,18,.7);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+.titlebar-title{font-size:12px;color:var(--sub);font-weight:500;-webkit-app-region:no-drag}
+.tbtn{
+  width:24px;height:24px;border-radius:6px;border:none;cursor:pointer;
+  background:rgba(255,255,255,.06);color:var(--sub);font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;-webkit-app-region:no-drag;
+}
+.tbtn:hover{background:rgba(239,68,68,.25);color:#fff}
+
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:20px;padding:36px 28px;width:100%;max-width:400px;
+  position:relative;z-index:1;backdrop-filter:blur(24px);text-align:center;
+  box-shadow:0 0 60px rgba(124,58,237,.1),0 20px 60px rgba(0,0,0,.45);
+  margin-top:36px;
+}
+
+/* ── Shield animation ────────────────────────────────────────────────────── */
+.shield-wrap{margin-bottom:20px;position:relative;display:inline-block}
+.shield{
+  font-size:52px;display:block;
+  animation:float 3s ease-in-out infinite;
+  filter:drop-shadow(0 0 18px rgba(124,58,237,.6));
+}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.shield-ring{
+  position:absolute;inset:-12px;border-radius:50%;
+  border:2px solid rgba(124,58,237,.25);
+  animation:ring 2s linear infinite;
+}
+@keyframes ring{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.shield-ring::after{
+  content:'';position:absolute;top:-3px;left:50%;transform:translateX(-50%);
+  width:8px;height:8px;border-radius:50%;background:var(--pri);
+  box-shadow:0 0 10px var(--pri);
+}
+
+h1{font-size:20px;font-weight:700;
+  background:linear-gradient(135deg,#fff,rgba(255,255,255,.7));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:6px;
+}
+.dest-line{
+  font-size:13px;color:var(--sub);margin-bottom:22px;
+  background:rgba(255,255,255,.04);padding:7px 14px;
+  border-radius:8px;border:1px solid var(--border);
+  display:inline-block;
+}
+.dest-line strong{color:var(--text)}
+
+/* ── OTP boxes ───────────────────────────────────────────────────────────── */
+.otp-row{
+  display:flex;justify-content:center;gap:10px;margin-bottom:20px;
+}
+.otp-box{
+  width:48px;height:58px;border-radius:12px;
+  background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);
+  color:var(--text);font-size:24px;font-weight:700;text-align:center;
+  outline:none;transition:border-color .2s,background .2s,box-shadow .2s;
+  caret-color:transparent;
+}
+.otp-box:focus{
+  border-color:var(--pri);background:var(--pri-light);
+  box-shadow:0 0 0 3px var(--pri-glow);
+}
+.otp-box.filled{border-color:rgba(124,58,237,.5)}
+.otp-box.ok-box{border-color:var(--ok);background:rgba(34,197,94,.08)}
+.otp-box.err-box{border-color:var(--err);background:rgba(239,68,68,.08);animation:shake .3s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+/* ── Timer ───────────────────────────────────────────────────────────────── */
+.timer-row{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-bottom:18px;font-size:13px;color:var(--sub);
+}
+.timer-badge{
+  font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;
+  color:var(--text);background:rgba(255,255,255,.06);
+  padding:3px 10px;border-radius:7px;border:1px solid var(--border);
+  min-width:52px;text-align:center;
+}
+.timer-badge.expiring{color:var(--err)}
+.timer-badge.expired{color:var(--muted)}
+
+/* ── Resend button ───────────────────────────────────────────────────────── */
+.resend-btn{
+  background:none;border:none;cursor:pointer;color:var(--acc);
+  font-size:13px;font-weight:500;text-decoration:underline;padding:0;
+  transition:opacity .2s;
+}
+.resend-btn:disabled{color:var(--muted);text-decoration:none;cursor:default;opacity:.6}
+
+/* ── Verify button ───────────────────────────────────────────────────────── */
+.btn-verify{
+  width:100%;padding:13px;border:none;border-radius:12px;cursor:pointer;
+  background:linear-gradient(135deg,var(--pri),#5b21b6);color:#fff;
+  font-size:15px;font-weight:700;letter-spacing:.3px;
+  box-shadow:0 0 24px var(--pri-glow);transition:all .2s;margin-bottom:10px;
+}
+.btn-verify:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 0 32px var(--pri-glow)}
+.btn-verify:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+.cancel-link{
+  display:block;font-size:13px;color:var(--muted);
+  background:none;border:none;cursor:pointer;text-decoration:none;
+  margin-top:4px;
+}
+.cancel-link:hover{color:var(--sub)}
+
+/* ── Status messages ─────────────────────────────────────────────────────── */
+.status{
+  padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;
+  margin-bottom:14px;display:none;
+}
+.status.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--err)}
+.status.ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:var(--ok)}
+.status.show{display:block}
+
+/* ── Success screen ──────────────────────────────────────────────────────── */
+.success-screen{display:none;text-align:center}
+.success-screen.show{display:block}
+.success-icon{font-size:56px;margin-bottom:14px;
+  animation:popIn .4s cubic-bezier(.175,.885,.32,1.275);display:block}
+@keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+.success-screen h2{font-size:20px;font-weight:700;color:var(--ok);margin-bottom:6px}
+.success-screen p{font-size:13px;color:var(--sub);line-height:1.6}
+
+/* ── Loading overlay ─────────────────────────────────────────────────────── */
+.loading-overlay{
+  position:fixed;inset:0;background:rgba(8,8,18,.8);z-index:200;
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;
+  backdrop-filter:blur(4px);
+}
+.loading-overlay.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid rgba(124,58,237,.2);
+  border-top-color:var(--pri);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--sub);font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- Title bar -->
+<div class="titlebar">
+  <span class="titlebar-title">⚡ MyBrowser — Verification</span>
+  <div style="-webkit-app-region:no-drag">
+    <button class="tbtn" onclick="doCancel()">✕</button>
+  </div>
+</div>
+
+<div class="card">
+  <!-- Main content -->
+  <div id="main-content">
+    <div class="shield-wrap">
+      <span class="shield">🛡️</span>
+      <div class="shield-ring"></div>
+    </div>
+
+    <h1>Verify Your Account</h1>
+    <div class="dest-line">Code sent to <strong id="dest-display">…</strong></div>
+
+    <div class="status" id="status-msg"></div>
+
+    <!-- 6-digit OTP boxes -->
+    <div class="otp-row" id="otp-row">
+      <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp-0" onkeydown="handleKey(event,0)" oninput="handleInput(event,0)" onpaste="handlePaste(event)">
+      <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp-1" onkeydown="handleKey(event,1)" oninput="handleInput(event,1)">
+      <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp-2" onkeydown="handleKey(event,2)" oninput="handleInput(event,2)">
+      <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp-3" onkeydown="handleKey(event,3)" oninput="handleInput(event,3)">
+      <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp-4" onkeydown="handleKey(event,4)" oninput="handleInput(event,4)">
+      <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp-5" onkeydown="handleKey(event,5)" oninput="handleInput(event,5)">
+    </div>
+
+    <!-- Timer -->
+    <div class="timer-row">
+      <span>Expires in</span>
+      <span class="timer-badge" id="timer">10:00</span>
+      <span>·</span>
+      <button class="resend-btn" id="resend-btn" onclick="doResend()" disabled>Resend</button>
+      <span id="resend-timer" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+
+    <!-- Verify button -->
+    <button class="btn-verify" id="btn-verify" onclick="doVerify()">Verify Code</button>
+    <button class="cancel-link" onclick="doCancel()">Cancel & go back</button>
+  </div>
+
+  <!-- Success screen (shown on success) -->
+  <div class="success-screen" id="success-screen">
+    <span class="success-icon">✅</span>
+    <h2>Verified!</h2>
+    <p>Your account has been confirmed.<br>Closing window…</p>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Verifying code…</div>
+</div>
+
+<script>
+'use strict'
+const api = window.electronAPI
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let otpType    = 'email'   // 'email' | 'signup' | 'sms'
+let otpTarget  = ''        // email or phone
+let otpMode    = 'signup'  // 'signup' | 'login'
+let expirySecs = 600       // 10 minutes for email, 5 min for SMS
+let expiryTimer, resendCountdown
+
+// ── Init from IPC or URL params ───────────────────────────────────────────────
+function init(data) {
+  otpType   = data.type   || 'email'
+  otpTarget = data.email  || data.phone || ''
+  otpMode   = data.mode   || 'signup'
+
+  // SMS OTP expires in 5 min
+  if (otpType === 'sms') expirySecs = 300
+
+  // Display destination (mask middle)
+  const dest = document.getElementById('dest-display')
+  if (otpTarget.includes('@')) {
+    const [local, domain] = otpTarget.split('@')
+    dest.textContent = local.slice(0,2) + '***@' + domain
+  } else {
+    dest.textContent = otpTarget.slice(0, 4) + '****' + otpTarget.slice(-2)
+  }
+
+  startExpiryTimer()
+  startResendCooldown()
+  document.getElementById('otp-0').focus()
+}
+
+// ── Timer ─────────────────────────────────────────────────────────────────────
+function startExpiryTimer() {
+  let secs = expirySecs
+  const badge = document.getElementById('timer')
+  clearInterval(expiryTimer)
+  const tick = () => {
+    const m = Math.floor(secs/60), s = secs % 60
+    badge.textContent = `${m}:${String(s).padStart(2,'0')}`
+    badge.classList.toggle('expiring', secs <= 60)
+    if (secs <= 0) {
+      clearInterval(expiryTimer)
+      badge.textContent = 'Expired'
+      badge.classList.add('expired')
+      setStatus('Code has expired. Please request a new one.', 'err')
+      document.getElementById('btn-verify').disabled = true
+    }
+    secs--
+  }
+  tick()
+  expiryTimer = setInterval(tick, 1000)
+}
+
+function startResendCooldown() {
+  let secs = 60
+  const btn  = document.getElementById('resend-btn')
+  const lbl  = document.getElementById('resend-timer')
+  btn.disabled = true
+  clearInterval(resendCountdown)
+  const tick = () => {
+    if (secs <= 0) {
+      clearInterval(resendCountdown)
+      btn.disabled = false
+      lbl.textContent = ''
+    } else {
+      lbl.textContent = `(${secs}s)`
+      secs--
+    }
+  }
+  tick()
+  resendCountdown = setInterval(tick, 1000)
+}
+
+// ── OTP box handling ──────────────────────────────────────────────────────────
+function handleInput(e, idx) {
+  const val = e.target.value.replace(/\D/g,'')
+  e.target.value = val
+  e.target.classList.toggle('filled', val.length > 0)
+  if (val && idx < 5) document.getElementById('otp-' + (idx+1)).focus()
+  if (idx === 5 && val) checkAutoVerify()
+}
+
+function handleKey(e, idx) {
+  if (e.key === 'Backspace') {
+    if (!e.target.value && idx > 0) {
+      const prev = document.getElementById('otp-' + (idx-1))
+      prev.value = ''
+      prev.classList.remove('filled')
+      prev.focus()
+    }
+  }
+  if (e.key === 'ArrowLeft' && idx > 0) document.getElementById('otp-' + (idx-1)).focus()
+  if (e.key === 'ArrowRight' && idx < 5) document.getElementById('otp-' + (idx+1)).focus()
+  if (e.key === 'Enter') doVerify()
+}
+
+function handlePaste(e) {
+  e.preventDefault()
+  const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6)
+  text.split('').forEach((ch, i) => {
+    const box = document.getElementById('otp-' + i)
+    if (box) { box.value = ch; box.classList.add('filled') }
+  })
+  if (text.length === 6) { document.getElementById('otp-5').focus(); checkAutoVerify() }
+  else if (text.length > 0) document.getElementById('otp-' + Math.min(text.length, 5)).focus()
+}
+
+function getCode() {
+  return [0,1,2,3,4,5].map(i => document.getElementById('otp-' + i).value).join('')
+}
+
+function checkAutoVerify() {
+  const code = getCode()
+  if (code.length === 6) setTimeout(doVerify, 200)
+}
+
+// ── Verify ────────────────────────────────────────────────────────────────────
+async function doVerify() {
+  const code = getCode()
+  if (code.length < 6) { setStatus('Please enter all 6 digits', 'err'); return }
+
+  setLoading(true)
+  clearStatus()
+
+  try {
+    let session
+    if (otpType === 'sms') {
+      session = await window.SB.verifyPhoneOtp(otpTarget, code)
+    } else {
+      // 'email' for login OTP, 'signup' for registration confirmation
+      const type = otpMode === 'signup' ? 'signup' : 'email'
+      session = await window.SB.verifyEmailOtp(otpTarget, code, type)
+    }
+
+    setLoading(false)
+    showSuccess()
+
+    // Save session via main process
+    if (api) {
+      setTimeout(() => api.authSaveSession(session), 800)
+    }
+
+  } catch (e) {
+    setLoading(false)
+    const msg = e.message || 'Invalid code'
+    setStatus(msg.includes('expired') ? 'Code has expired — please resend' : 'Incorrect code. Please try again.', 'err')
+    // Shake boxes
+    document.querySelectorAll('.otp-box').forEach(b => {
+      b.classList.add('err-box')
+      setTimeout(() => b.classList.remove('err-box'), 400)
+    })
+    // Clear boxes
+    setTimeout(() => {
+      [0,1,2,3,4,5].forEach(i => {
+        const b = document.getElementById('otp-' + i)
+        b.value = ''; b.classList.remove('filled')
+      })
+      document.getElementById('otp-0').focus()
+    }, 400)
+  }
+}
+
+// ── Resend ────────────────────────────────────────────────────────────────────
+async function doResend() {
+  document.getElementById('resend-btn').disabled = true
+  clearStatus()
+  try {
+    if (otpType === 'sms') await window.SB.sendPhoneOtp(otpTarget)
+    else                   await window.SB.sendEmailOtp(otpTarget)
+    setStatus('New code sent! Check your ' + (otpType === 'sms' ? 'phone' : 'email') + '.', 'ok')
+    // Reset timers
+    clearInterval(expiryTimer)
+    expirySecs = otpType === 'sms' ? 300 : 600
+    startExpiryTimer()
+    startResendCooldown()
+    document.getElementById('btn-verify').disabled = false
+    // Clear boxes
+    [0,1,2,3,4,5].forEach(i => {
+      const b = document.getElementById('otp-' + i)
+      b.value = ''; b.classList.remove('filled')
+    })
+    document.getElementById('otp-0').focus()
+  } catch (e) {
+    setStatus(e.message || 'Could not resend code', 'err')
+    startResendCooldown()
+  }
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function setStatus(msg, type) {
+  const el = document.getElementById('status-msg')
+  el.textContent = msg
+  el.className = 'status ' + type + ' show'
+}
+function clearStatus() {
+  const el = document.getElementById('status-msg')
+  el.className = 'status'
+  el.textContent = ''
+}
+function setLoading(show, text = 'Verifying code…') {
+  document.getElementById('loading').classList.toggle('show', show)
+  document.getElementById('loading-text').textContent = text
+  document.getElementById('btn-verify').disabled = show
+}
+function showSuccess() {
+  clearInterval(expiryTimer)
+  clearInterval(resendCountdown)
+  document.getElementById('main-content').style.display = 'none'
+  document.getElementById('success-screen').classList.add('show')
+}
+function doCancel() {
+  clearInterval(expiryTimer)
+  clearInterval(resendCountdown)
+  if (api) api.authWinClose()
+  else history.back()
+}
+
+// ── Init: receive data from IPC or URL params ─────────────────────────────────
+if (api && api.onOtpInit) {
+  api.onOtpInit(init)
+}
+// Also parse from URL params as fallback
+const params = new URLSearchParams(window.location.search)
+if (params.get('email') || params.get('phone')) {
+  init({
+    type:  params.get('type')  || 'email',
+    email: params.get('email') || undefined,
+    phone: params.get('phone') || undefined,
+    mode:  params.get('mode')  || 'signup',
+  })
+}
+</script>
+</body>
+</html>

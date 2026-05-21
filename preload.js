@@ -100,4 +100,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   proxyToggleAutoSwitch: (val)   => ipcRenderer.invoke('proxy-toggle-autoswitch', val),
   openProxyManager:      ()      => ipcRenderer.invoke('open-proxy-manager'),
   onProxyState:          (cb)    => ipcRenderer.on('proxy-state', (_, d) => cb(d)),
+
+  // ── Account / Auth ──────────────────────────────────────────────────────────
+  authOpenLogin:      ()          => ipcRenderer.invoke('auth-open-login'),
+  authOpenRegister:   ()          => ipcRenderer.invoke('auth-open-register'),
+  authOpenOtp:        (data)      => ipcRenderer.invoke('auth-open-otp',          data),
+  authSaveSession:    (session)   => ipcRenderer.invoke('auth-save-session',      session),
+  authGetSession:     ()          => ipcRenderer.invoke('auth-get-session'),
+  authLogout:         ()          => ipcRenderer.invoke('auth-logout'),
+  authCheckBrute:     (id)        => ipcRenderer.invoke('auth-check-brute',       id),
+  authRecordAttempt:  (data)      => ipcRenderer.invoke('auth-record-attempt',    data),
+  authAddHistory:     (entry)     => ipcRenderer.invoke('auth-add-history',       entry),
+  authGetHistory:     ()          => ipcRenderer.invoke('auth-get-history'),
+  authGetDeviceId:    ()          => ipcRenderer.invoke('auth-get-device-id'),
+  authGoogleLogin:    (url)       => ipcRenderer.invoke('auth-google-login',      url),
+  authWinClose:       ()          => ipcRenderer.send('auth-win-close'),
+  authWinMinimize:    ()          => ipcRenderer.send('auth-win-minimize'),
+  onAuthStateChange:  (cb)        => ipcRenderer.on('auth-state-changed',  (_, d) => cb(d)),
+  onOtpInit:          (cb)        => ipcRenderer.on('otp-init',            (_, d) => cb(d)),
 })
