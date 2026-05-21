@@ -394,6 +394,36 @@ function trackHistory(url) {
   sessionHistory = [url, ...sessionHistory.filter(u => u !== url)].slice(0, 100)
 }
 
+// ── Account button ────────────────────────────────────────────────────────────
+;(async () => {
+  const btnAccount = document.getElementById('btn-account')
+  const accountDot = document.getElementById('account-dot')
+  if (!btnAccount) return
+
+  // Show green dot if already logged in
+  const session = await window.electronAPI.authGetSession?.()
+  if (session?.access_token) accountDot.style.display = 'block'
+
+  // Listen for auth state changes
+  window.electronAPI.onAuthStateChange?.((data) => {
+    accountDot.style.display = data.loggedIn ? 'block' : 'none'
+  })
+
+  btnAccount.addEventListener('click', async () => {
+    const s = await window.electronAPI.authGetSession?.()
+    if (s?.access_token) {
+      // Logged in — offer logout or account info
+      if (confirm('You are signed in.\n\nClick OK to sign out, or Cancel to stay signed in.')) {
+        await window.electronAPI.authLogout?.()
+        accountDot.style.display = 'none'
+      }
+    } else {
+      // Not logged in — open login window
+      await window.electronAPI.authOpenLogin?.()
+    }
+  })
+})()
+
 // ── Button Listeners ──────────────────────────────────────────────────────────
 
 btnBack.addEventListener('click',    () => tabsMap.get(activeTabId)?.webviewEl.goBack())
