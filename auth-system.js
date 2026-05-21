@@ -215,7 +215,13 @@ function init(mainWin) {
   ipcMain.handle('auth-save-session', (_, session) => {
     saveSession(session)
     ;[loginWin, registerWin, otpWin].forEach(w => { try { if (w && !w.isDestroyed()) w.close() } catch (_) {} })
-    if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('auth-state-changed', { loggedIn: true })
+    // Extract username from session metadata (set during signup)
+    const username = session?.user?.user_metadata?.username
+      || session?.user?.email?.split('@')[0]
+      || 'User'
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('auth-state-changed', { loggedIn: true, username })
+    }
   })
   ipcMain.handle('auth-get-session',  () => loadSession())
   ipcMain.handle('auth-logout', () => {

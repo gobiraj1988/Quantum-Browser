@@ -400,25 +400,74 @@ function trackHistory(url) {
   const accountDot = document.getElementById('account-dot')
   if (!btnAccount) return
 
-  // Show green dot if already logged in
-  const session = await window.electronAPI.authGetSession?.()
-  if (session?.access_token) accountDot.style.display = 'block'
+  let currentUsername = null
 
-  // Listen for auth state changes
+  function showWelcomeBanner(username) {
+    // Remove existing banner if any
+    document.getElementById('welcome-banner')?.remove()
+    const banner = document.createElement('div')
+    banner.id = 'welcome-banner'
+    banner.style.cssText = [
+      'position:fixed','bottom:24px','right:24px','z-index:9999',
+      'background:linear-gradient(135deg,#7c3aed,#06b6d4)',
+      'color:#fff','padding:12px 20px','border-radius:14px',
+      'font-size:13px','font-weight:600','letter-spacing:.2px',
+      'box-shadow:0 8px 32px rgba(124,58,237,.5)',
+      'display:flex','align-items:center','gap:10px',
+      'animation:wbIn .35s cubic-bezier(.175,.885,.32,1.275)',
+      'max-width:280px',
+    ].join(';')
+    banner.innerHTML = `<span style="font-size:20px">👋</span><span>Welcome, @${username}!</span>`
+    // Inject keyframes once
+    if (!document.getElementById('wb-style')) {
+      const s = document.createElement('style')
+      s.id = 'wb-style'
+      s.textContent = `
+        @keyframes wbIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+        @keyframes wbOut{from{transform:translateX(0);opacity:1}to{transform:translateX(120%);opacity:0}}
+      `
+      document.head.appendChild(s)
+    }
+    document.body.appendChild(banner)
+    setTimeout(() => {
+      banner.style.animation = 'wbOut .3s ease forwards'
+      setTimeout(() => banner.remove(), 300)
+    }, 3500)
+  }
+
+  // Show dot if already logged in on startup
+  const session = await window.electronAPI.authGetSession?.()
+  if (session?.access_token) {
+    accountDot.style.display = 'block'
+    currentUsername = session.user?.user_metadata?.username
+      || session.user?.email?.split('@')[0] || null
+    if (currentUsername) btnAccount.title = `@${currentUsername} — click to sign out`
+  }
+
+  // Listen for auth state changes (login / logout)
   window.electronAPI.onAuthStateChange?.((data) => {
     accountDot.style.display = data.loggedIn ? 'block' : 'none'
+    if (data.loggedIn && data.username) {
+      currentUsername = data.username
+      btnAccount.title = `@${data.username} — click to sign out`
+      showWelcomeBanner(data.username)
+    } else {
+      currentUsername = null
+      btnAccount.title = 'Account — Sign in / Register'
+    }
   })
 
   btnAccount.addEventListener('click', async () => {
     const s = await window.electronAPI.authGetSession?.()
     if (s?.access_token) {
-      // Logged in — offer logout or account info
-      if (confirm('You are signed in.\n\nClick OK to sign out, or Cancel to stay signed in.')) {
+      const name = currentUsername ? `@${currentUsername}` : 'your account'
+      if (confirm(`Signed in as ${name}.\n\nClick OK to sign out.`)) {
         await window.electronAPI.authLogout?.()
         accountDot.style.display = 'none'
+        currentUsername = null
+        btnAccount.title = 'Account — Sign in / Register'
       }
     } else {
-      // Not logged in — open login window
       await window.electronAPI.authOpenLogin?.()
     }
   })
