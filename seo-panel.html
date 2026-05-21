@@ -1,0 +1,264 @@
+<!-- SEO Analyzer side panel — injected into #main-area by seo-analyzer.js -->
+<style>
+/* ── Panel shell — slides in from the right, just like the AI sidebar ─────── */
+#seo-panel {
+  width: 360px;
+  max-width: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #1a1b1e;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  transition: max-width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#seo-panel.open { max-width: 360px; }
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.seo-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 12px 11px 14px;
+  background: #1e1f24;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+.seo-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8eaed;
+}
+.seo-title svg { color: #8ab4f8; flex-shrink: 0; }
+.seo-icon-btn {
+  width: 27px;
+  height: 27px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #9aa0a6;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, color .15s;
+}
+.seo-icon-btn:hover { background: rgba(255, 255, 255, 0.09); color: #e8eaed; }
+
+/* ── Scrollable body ───────────────────────────────────────────────────────── */
+.seo-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 14px 24px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+.seo-body::-webkit-scrollbar { width: 9px; }
+.seo-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+}
+.seo-body::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+/* ── Empty / loading state ─────────────────────────────────────────────────── */
+.seo-empty {
+  color: #9aa0a6;
+  font-size: 12.5px;
+  line-height: 1.6;
+  text-align: center;
+  padding: 54px 18px;
+}
+.seo-empty-icon { display: block; font-size: 30px; margin-bottom: 12px; opacity: .7; }
+
+/* ── Score ring (0–100) ────────────────────────────────────────────────────── */
+.seo-score-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0 2px;
+}
+.seo-score-ring {
+  width: 122px;
+  height: 122px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.seo-score-inner {
+  width: 98px;
+  height: 98px;
+  border-radius: 50%;
+  background: #1a1b1e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.seo-score-num { font-size: 33px; font-weight: 700; line-height: 1; }
+.seo-score-max { font-size: 11px; color: #9aa0a6; margin-top: 3px; }
+.seo-score-label { margin-top: 11px; font-size: 14px; font-weight: 700; }
+.seo-score-sub { margin-top: 3px; font-size: 11px; color: #9aa0a6; }
+
+/* ── Current URL line ──────────────────────────────────────────────────────── */
+.seo-url {
+  margin: 9px 4px 18px;
+  font-size: 11px;
+  color: #9aa0a6;
+  text-align: center;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ── Sections ──────────────────────────────────────────────────────────────── */
+.seo-section { margin-bottom: 20px; }
+.seo-section:last-child { margin-bottom: 0; }
+.seo-section-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: #9aa0a6;
+  margin-bottom: 10px;
+}
+
+/* ── Check rows ────────────────────────────────────────────────────────────── */
+.seo-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 10px;
+  margin-bottom: 6px;
+  background: #202125;
+  border-radius: 8px;
+}
+.seo-check:last-child { margin-bottom: 0; }
+.seo-check-icon {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.seo-good .seo-check-icon { background: rgba(52, 211, 153, .16);  color: #34d399; }
+.seo-warn .seo-check-icon { background: rgba(251, 191, 36, .16);  color: #fbbf24; }
+.seo-bad  .seo-check-icon { background: rgba(242, 139, 130, .16); color: #f28b82; }
+.seo-check-text { flex: 1; min-width: 0; }
+.seo-check-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #e8eaed;
+}
+.seo-check-detail {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #9aa0a6;
+  line-height: 1.45;
+}
+.seo-check-pts {
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9aa0a6;
+}
+
+/* ── Heading structure ─────────────────────────────────────────────────────── */
+.seo-head-counts { display: flex; gap: 8px; margin-bottom: 11px; }
+.seo-hc {
+  flex: 1;
+  padding: 11px 4px;
+  text-align: center;
+  background: #202125;
+  border-radius: 8px;
+}
+.seo-hc b { display: block; font-size: 21px; font-weight: 700; color: #8ab4f8; }
+.seo-hc span {
+  font-size: 10px;
+  color: #9aa0a6;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.seo-head-list { font-size: 11.5px; line-height: 1.5; }
+.seo-hl-row { display: flex; gap: 7px; margin-bottom: 4px; }
+.seo-hl-row span:last-child { color: #bdc1c6; }
+.seo-hl-tag {
+  flex-shrink: 0;
+  width: 20px;
+  font-weight: 700;
+  font-size: 10.5px;
+  color: #8ab4f8;
+}
+
+/* ── Keyword density bars ──────────────────────────────────────────────────── */
+.seo-kw { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.seo-kw:last-child { margin-bottom: 0; }
+.seo-kw-word {
+  width: 86px;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: #e8eaed;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.seo-kw-bar {
+  flex: 1;
+  height: 7px;
+  background: #202125;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.seo-kw-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #8ab4f8, #5a8fe0);
+}
+.seo-kw-stat {
+  width: 66px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 10.5px;
+  color: #9aa0a6;
+}
+
+/* ── Spinning re-analyze icon ──────────────────────────────────────────────── */
+@keyframes seo-rot { to { transform: rotate(360deg); } }
+.seo-spin { animation: seo-rot .7s linear infinite; }
+</style>
+
+<div class="seo-header">
+  <span class="seo-title">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" stroke-width="1.7"
+         stroke-linecap="round" stroke-linejoin="round">
+      <line x1="2" y1="14" x2="14" y2="14"/>
+      <rect x="3"    y="9" width="2.4" height="4"  fill="currentColor" stroke="none"/>
+      <rect x="6.8"  y="6" width="2.4" height="7"  fill="currentColor" stroke="none"/>
+      <rect x="10.6" y="3" width="2.4" height="10" fill="currentColor" stroke="none"/>
+    </svg>
+    SEO Analyzer
+  </span>
+  <button class="seo-icon-btn" id="seo-reanalyze-btn" title="Re-analyze this page">&#x21bb;</button>
+  <button class="seo-icon-btn" id="seo-close-btn" title="Close panel">&#x2715;</button>
+</div>
+
+<div class="seo-body" id="seo-body">
+  <div class="seo-empty">
+    <span class="seo-empty-icon">&#x1F50D;</span>
+    Loading SEO Analyzer&hellip;
+  </div>
+</div>

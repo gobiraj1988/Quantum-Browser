@@ -4,20 +4,8 @@
   <meta charset="UTF-8">
   <title>MyBrowser</title>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    /* VPN widget status dot */
-    #vpn-widget { position: relative; display: inline-flex; }
-    #btn-vpn    { position: relative; }
-    .vpn-dot {
-      position: absolute; top: 3px; right: 3px;
-      width: 7px; height: 7px; border-radius: 50%;
-      background: transparent;
-      border: 1.5px solid transparent;
-      transition: background 0.3s, border-color 0.3s;
-    }
-    .vpn-dot.on  { background: #81c995; border-color: #202124; }
-    .vpn-dot.off { background: transparent; }
-  </style>
+  <!-- Theme engine — loaded here so the theme is set before first paint -->
+  <script src="themes.js"></script>
 </head>
 <body>
 
@@ -339,12 +327,86 @@
       </button>
     </div>
 
+    <!-- SEO Analyzer toggle -->
+    <button id="btn-seo" class="nav-btn" title="SEO Analyzer — live page audit">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+           stroke="currentColor" stroke-width="1.7"
+           stroke-linecap="round" stroke-linejoin="round">
+        <line x1="2" y1="14" x2="14" y2="14"/>
+        <rect x="3"    y="9" width="2.4" height="4"  fill="currentColor" stroke="none"/>
+        <rect x="6.8"  y="6" width="2.4" height="7"  fill="currentColor" stroke="none"/>
+        <rect x="10.6" y="3" width="2.4" height="10" fill="currentColor" stroke="none"/>
+      </svg>
+    </button>
+
     <!-- AI Assistant toggle -->
     <button id="btn-ai" class="nav-btn" title="Claude AI Assistant">
       <svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor">
         <path d="M7.5 0.5 L8.9 5.3 L13.8 5.4 L9.9 8.4 L11.4 13.2 L7.5 10.2 L3.6 13.2 L5.1 8.4 L1.2 5.4 L6.1 5.3 Z"/>
       </svg>
     </button>
+
+    <!-- Theme toggle (Dark / Light / System) -->
+    <div id="theme-widget">
+      <button id="btn-theme" class="nav-btn" title="Appearance">
+        <!-- moon — shown while dark theme is active -->
+        <svg class="theme-icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M13.5 10.1A6.2 6.2 0 0 1 5.9 2.5a6.2 6.2 0 1 0 7.6 7.6z"/>
+        </svg>
+        <!-- sun — shown while light theme is active -->
+        <svg class="theme-icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"
+             stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="display:none">
+          <circle cx="8" cy="8" r="3.1"/>
+          <path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15
+                   M3.05 3.05l1.1 1.1M11.85 11.85l1.1 1.1
+                   M3.05 12.95l1.1-1.1M11.85 4.15l1.1-1.1"/>
+        </svg>
+      </button>
+
+      <!-- Appearance menu -->
+      <div id="theme-menu">
+        <div class="theme-menu-title">Appearance</div>
+
+        <button class="theme-opt" data-theme-mode="dark">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M13.5 10.1A6.2 6.2 0 0 1 5.9 2.5a6.2 6.2 0 1 0 7.6 7.6z"/>
+          </svg>
+          Dark
+          <svg class="theme-opt-check" width="14" height="14" viewBox="0 0 14 14" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="2.5 7.5 5.5 10.5 11.5 3.5"/>
+          </svg>
+        </button>
+
+        <button class="theme-opt" data-theme-mode="light">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
+               stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="8" cy="8" r="3.1"/>
+            <path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15
+                     M3.05 3.05l1.1 1.1M11.85 11.85l1.1 1.1
+                     M3.05 12.95l1.1-1.1M11.85 4.15l1.1-1.1"/>
+          </svg>
+          Light
+          <svg class="theme-opt-check" width="14" height="14" viewBox="0 0 14 14" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="2.5 7.5 5.5 10.5 11.5 3.5"/>
+          </svg>
+        </button>
+
+        <button class="theme-opt" data-theme-mode="system">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
+               stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+            <rect x="1.5" y="2.5" width="13" height="9" rx="1.2"/>
+            <line x1="5.5" y1="14" x2="10.5" y2="14" stroke-linecap="round"/>
+          </svg>
+          System
+          <svg class="theme-opt-check" width="14" height="14" viewBox="0 0 14 14" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="2.5 7.5 5.5 10.5 11.5 3.5"/>
+          </svg>
+        </button>
+      </div>
+    </div>
 
     <!-- Settings button -->
     <button id="btn-settings" class="nav-btn" title="Ad Blocker Settings">
@@ -362,6 +424,8 @@
 
   <!-- ══════════════ MAIN AREA (webview + AI sidebar) ══════════════════════ -->
   <div id="main-area">
+    <!-- Thin progress bar shown while a page loads -->
+    <div id="page-loading-bar"></div>
     <!-- One <webview> per tab, inserted dynamically by renderer.js -->
     <div id="webview-stack"></div>
     <!-- AI sidebar injected here by ai-sidebar.js -->
@@ -752,6 +816,30 @@
 })()
 </script>
 
+<!-- Page loading bar — mirrors the URL-bar spinner's loading state -->
+<script>
+;(function () {
+  'use strict'
+  const bar     = document.getElementById('page-loading-bar')
+  const spinner = document.getElementById('loading-spinner')
+  if (!bar || !spinner) return
+
+  let hideTimer
+
+  // The spinner gets/loses the "active" class as pages load — watch for it.
+  new MutationObserver(() => {
+    if (spinner.classList.contains('active')) {
+      clearTimeout(hideTimer)
+      bar.classList.remove('done')
+      bar.classList.add('active')
+    } else if (bar.classList.contains('active')) {
+      bar.classList.add('done')                 // snap to 100%
+      hideTimer = setTimeout(() => bar.classList.remove('active', 'done'), 320)
+    }
+  }).observe(spinner, { attributes: true, attributeFilter: ['class'] })
+})()
+</script>
+
 <!-- Critical path: renderer + context menu load immediately -->
 <script src="renderer.js"></script>
 <script src="context-menu.js"></script>
@@ -776,6 +864,10 @@
   // Load AI sidebar when user clicks the AI button
   const btnAi = document.getElementById('btn-ai')
   if (btnAi) btnAi.addEventListener('click', loadAI, { once: true })
+
+  // Load SEO Analyzer when user clicks the SEO button
+  const btnSeo = document.getElementById('btn-seo')
+  if (btnSeo) btnSeo.addEventListener('click', () => load('seo-analyzer.js'), { once: true })
 
   // Load translator when url-changed fires (page is loaded, user may want translate)
   document.addEventListener('url-changed', function onFirstUrl() {

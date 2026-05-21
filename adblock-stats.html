@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ad Block Stats</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #13131a;
+      --bg2:     #1e1e28;
+      --bg3:     #28283a;
+      --hover:   #32324a;
+      --accent:  #8ab4f8;
+      --green:   #81c995;
+      --red:     #f28b82;
+      --yellow:  #fdd663;
+      --purple:  #c58af9;
+      --text:    #e8eaed;
+      --muted:   #9aa0a6;
+      --border:  rgba(255,255,255,0.07);
+    }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+    }
+    body { display: flex; flex-direction: column; }
+
+    /* ── Header ── */
+    .header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 20px 12px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header svg { color: var(--green); flex-shrink: 0; }
+    .header h1  { font-size: 14px; font-weight: 600; flex: 1; }
+    .header-actions { display: flex; gap: 8px; }
+
+    /* ── Scroll container ── */
+    .body {
+      flex: 1; overflow-y: auto;
+      padding: 16px 20px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    /* ── Big stat cards row ── */
+    .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+    .stat-card {
+      background: var(--bg2);
+      border-radius: 10px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-card-label {
+      font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted);
+    }
+    .stat-card-value {
+      font-size: 30px; font-weight: 700; line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-card-sub { font-size: 11px; color: var(--muted); }
+
+    .accent  { color: var(--accent);  }
+    .green   { color: var(--green);   }
+    .yellow  { color: var(--yellow);  }
+    .purple  { color: var(--purple);  }
+
+    /* ── Savings row ── */
+    .savings-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .savings-card {
+      background: var(--bg2); border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .savings-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .savings-icon.bw   { background: rgba(138,180,248,0.12); }
+    .savings-icon.time { background: rgba(129,201,149,0.12); }
+    .savings-icon.net  { background: rgba(197,138,249,0.12); }
+    .savings-text {}
+    .savings-value { font-size: 18px; font-weight: 700; }
+    .savings-label { font-size: 11px; color: var(--muted); }
+
+    /* ── Tables row ── */
+    .tables-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; flex: 1; }
+
+    .table-card {
+      background: var(--bg2); border-radius: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .table-header {
+      padding: 10px 14px 8px;
+      font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .table-body {
+      flex: 1; overflow-y: auto;
+    }
+    .table-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 14px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .table-row:last-child { border-bottom: none; }
+    .table-row:hover { background: var(--hover); }
+    .row-rank {
+      width: 18px; text-align: right;
+      font-size: 11px; color: #555; flex-shrink: 0;
+    }
+    .row-bar-wrap { flex: 1; position: relative; height: 6px; border-radius: 3px; background: var(--bg3); overflow: hidden; }
+    .row-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+    .bar-red    { background: var(--red);    }
+    .bar-accent { background: var(--accent); }
+    .row-name   { font-size: 11.5px; font-family: 'Courier New', monospace; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+    .row-count  { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; min-width: 36px; text-align: right; }
+    .table-empty { padding: 24px; text-align: center; color: var(--muted); font-size: 12px; }
+
+    /* ── Bottom bar ── */
+    .footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 20px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      font-size: 11.5px; color: var(--muted);
+      flex-shrink: 0;
+    }
+    .footer-live { display: flex; align-items: center; gap: 6px; }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+    #update-status { transition: color 0.2s; }
+    #update-status.ok  { color: var(--green); }
+    #update-status.err { color: var(--red); }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 6px 14px; border-radius: 6px; border: none;
+      cursor: pointer; font-size: 12px; font-weight: 500;
+      transition: opacity 0.12s; white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.82; }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn-primary   { background: var(--accent);  color: #000; }
+    .btn-danger    { background: var(--red);      color: #000; }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <svg width="17" height="20" viewBox="0 0 17 20" fill="currentColor">
+    <path d="M8.5 0L0 3.5V10c0 5.25 3.63 10.16 8.5 11.5C13.37 20.16 17 15.25 17 10V3.5L8.5 0z"/>
+    <polyline points="4.5,10.5 7.5,13.5 12.5,7"
+      stroke="rgba(0,0,0,0.7)" stroke-width="1.6"
+      fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <h1>Ad Block Stats</h1>
+  <div class="header-actions">
+    <button class="btn btn-secondary" id="btn-update">Update Lists</button>
+    <button class="btn btn-danger"    id="btn-reset">Reset Stats</button>
+  </div>
+</div>
+
+<!-- Body -->
+<div class="body">
+
+  <!-- Big numbers -->
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-card-label">This Session</div>
+      <div class="stat-card-value accent" id="s-session">0</div>
+      <div class="stat-card-sub">requests blocked</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Today</div>
+      <div class="stat-card-value green" id="s-today">0</div>
+      <div class="stat-card-sub" id="s-today-date">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">All-Time</div>
+      <div class="stat-card-value yellow" id="s-alltime">0</div>
+      <div class="stat-card-sub">total requests</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Filter Database</div>
+      <div class="stat-card-value purple" id="s-domains">0</div>
+      <div class="stat-card-sub" id="s-patterns">0 patterns</div>
+    </div>
+  </div>
+
+  <!-- Savings -->
+  <div class="savings-row">
+    <div class="savings-card">
+      <div class="savings-icon bw">📦</div>
+      <div class="savings-text">
+        <div class="savings-value accent" id="s-bandwidth">0 KB</div>
+        <div class="savings-label">bandwidth saved this session</div>
+      </div>
+    </div>
+    <div class="savings-card">
+      <div class="savings-icon time">⏱</div>
+      <div class="savings-text">
+        <div class="savings-value green" id="s-time">0 s</div>
+        <div class="savings-label">load time saved this session</div>
+      </div>
+    </div>
+    <div class="savings-card">
+      <div class="savings-icon net">🛡</div>
+      <div class="savings-text">
+        <div class="savings-value purple" id="s-status">Active</div>
+        <div class="savings-label">blocker status</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tables -->
+  <div class="tables-row">
+    <div class="table-card">
+      <div class="table-header">Top Blocked Ad Networks</div>
+      <div class="table-body" id="tbl-networks">
+        <div class="table-empty">Browsing data will appear here.</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">Most Protected Sites</div>
+      <div class="table-body" id="tbl-sites">
+        <div class="table-empty">Browsing data will appear here.</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.body -->
+
+<!-- Footer -->
+<div class="footer">
+  <div class="footer-live">
+    <div class="live-dot"></div>
+    <span>Live — refreshing every 3 s</span>
+  </div>
+  <span id="update-status"></span>
+</div>
+
+<script>
+'use strict'
+;(async () => {
+
+const api = window.electronAPI
+
+// ── Formatters ─────────────────────────────────────────────────────────────
+
+function fmt (n) {
+  n = Number(n) || 0
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
+  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'K'
+  return n.toLocaleString()
+}
+
+function fmtBandwidth (bytes) {
+  if (bytes >= 1_073_741_824) return (bytes / 1_073_741_824).toFixed(2) + ' GB'
+  if (bytes >= 1_048_576)     return (bytes / 1_048_576).toFixed(1) + ' MB'
+  if (bytes >= 1_024)         return (bytes / 1_024).toFixed(0) + ' KB'
+  return bytes + ' B'
+}
+
+function fmtTime (seconds) {
+  if (seconds >= 3600) return (seconds / 3600).toFixed(1) + ' h'
+  if (seconds >= 60)   return (seconds / 60).toFixed(1) + ' min'
+  return seconds.toFixed(1) + ' s'
+}
+
+// ── Render helpers ─────────────────────────────────────────────────────────
+
+function renderTable (containerId, rows, nameKey, countKey, barClass) {
+  const el = document.getElementById(containerId)
+  if (!rows || !rows.length) {
+    el.innerHTML = '<div class="table-empty">Browsing data will appear here.</div>'
+    return
+  }
+  const max = rows[0][countKey] || 1
+  el.innerHTML = rows.slice(0, 12).map((row, i) => {
+    const pct = Math.round((row[countKey] / max) * 100)
+    return `<div class="table-row">
+      <span class="row-rank">${i + 1}</span>
+      <span class="row-name" title="${row[nameKey]}">${row[nameKey]}</span>
+      <div class="row-bar-wrap">
+        <div class="row-bar ${barClass}" style="width:${pct}%"></div>
+      </div>
+      <span class="row-count">${fmt(row[countKey])}</span>
+    </div>`
+  }).join('')
+}
+
+// ── Apply data to page ──────────────────────────────────────────────────────
+
+function applyData (d) {
+  const st = d.stats || {}
+
+  document.getElementById('s-session').textContent  = fmt(st.sessionCount)
+  document.getElementById('s-today').textContent    = fmt(st.todayCount)
+  document.getElementById('s-today-date').textContent =
+    st.todayDate ? st.todayDate : '—'
+  document.getElementById('s-alltime').textContent  = fmt(st.allTimeCount)
+  document.getElementById('s-domains').textContent  = fmt(d.domains)
+  document.getElementById('s-patterns').textContent = fmt(d.patternCount) + ' patterns'
+
+  // Bandwidth: ~52 KB per blocked request (avg ad asset size)
+  const bw = (st.sessionCount || 0) * 52 * 1024
+  document.getElementById('s-bandwidth').textContent = fmtBandwidth(bw)
+
+  // Time: ~0.9 s per blocked request
+  const ts = (st.sessionCount || 0) * 0.9
+  document.getElementById('s-time').textContent = fmtTime(ts)
+
+  // Status
+  const statusEl = document.getElementById('s-status')
+  statusEl.textContent = d.enabled ? 'Active' : 'Paused'
+  statusEl.className   = 'savings-value ' + (d.enabled ? 'purple' : 'red')
+
+  // Tables
+  renderTable('tbl-networks', d.topAdDomains || [],
+    'domain', 'count', 'bar-red')
+  renderTable('tbl-sites', d.topSites || [],
+    'site', 'count', 'bar-accent')
+}
+
+// ── Load and auto-refresh ───────────────────────────────────────────────────
+
+async function refresh () {
+  try {
+    const d = await api.ultraGetStats()
+    applyData(d)
+  } catch (_) {}
+}
+
+await refresh()
+setInterval(refresh, 3000)
+
+// ── Button handlers ─────────────────────────────────────────────────────────
+
+const updateBtn = document.getElementById('btn-update')
+const updateSt  = document.getElementById('update-status')
+
+updateBtn.addEventListener('click', () => api.forceUpdateFilters())
+
+document.getElementById('btn-reset').addEventListener('click', async () => {
+  if (!confirm('Reset all statistics? This cannot be undone.')) return
+  await api.clearStats()
+  await refresh()
+})
+
+// ── Filter update progress messages ────────────────────────────────────────
+
+api.onFilterUpdateStatus(msg => {
+  if (msg.phase === 'start') {
+    updateBtn.disabled = true
+    updateSt.textContent = 'Downloading filter lists…'
+    updateSt.className = ''
+  } else if (msg.phase === 'downloading') {
+    updateSt.textContent = 'Fetching ' + msg.name + '…'
+  } else if (msg.phase === 'done') {
+    updateBtn.disabled = false
+    updateSt.textContent = 'Updated — ' + (msg.domains || 0).toLocaleString() + ' domains'
+    updateSt.className = 'ok'
+    setTimeout(() => { if (updateSt.className === 'ok') updateSt.textContent = '' }, 4000)
+    refresh()
+  } else if (msg.phase === 'error') {
+    updateBtn.disabled = false
+    updateSt.textContent = 'Error on ' + (msg.name || 'list') + ': ' + msg.error
+    updateSt.className = 'err'
+  }
+})
+
+})()
+</script>
+</body>
+</html>
