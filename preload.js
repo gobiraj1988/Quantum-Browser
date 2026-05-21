@@ -40,8 +40,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSettingsUpdate:     (cb) => ipcRenderer.on('adblocker-settings-update', (_, d) => cb(d)),
   onFilterUpdateStatus: (cb) => ipcRenderer.on('adblocker-update-status',   (_, m) => cb(m)),
 
-  // ── Open settings window ───────────────────────────────────────────────────
-  openSettings: () => ipcRenderer.invoke('open-settings'),
+  // ── Open settings / stats windows ─────────────────────────────────────────
+  openSettings:     () => ipcRenderer.invoke('open-settings'),
+  openAdblockStats: () => ipcRenderer.invoke('open-adblock-stats'),
+
+  // ── Ad block stats (used by adblock-stats.html) ────────────────────────────
+  ultraGetStats: () => ipcRenderer.invoke('ultra-get-stats'),
 
   // ── AI Assistant ───────────────────────────────────────────────────────────
   aiChat:    (payload) => ipcRenderer.invoke('ai-chat',     payload),

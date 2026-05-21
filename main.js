@@ -17,15 +17,16 @@ app.commandLine.appendSwitch('disable-features',
   'CalculateNativeWinOcclusion,HardwareMediaKeyHandling,MediaRouter,OutOfBlinkCors')
 
 // ── Modules needed before any page request arrives ───────────────────────────
-const adblocker   = require('./adblocker')
-const privacy     = require('./privacy')
+const safeAdblocker = require('./safe-adblocker')
+const sponsorBlock  = require('./sponsorblock')
+const facebookHide  = require('./facebook-hide')
+const privacy       = require('./privacy')
 
 // ── All other modules required (fast — only parses/compiles code), but their
 //    init() is deferred via lazy-loader until after the window is visible. ─────
 const lazy = require('./lazy-loader')
 lazy.register('downloader',         () => require('./downloader'))
 lazy.register('proxy',              () => require('./proxy'))
-lazy.register('adInjector',         () => require('./ad-injector'))
 lazy.register('webrtcBlocker',      () => require('./webrtc-blocker'))
 lazy.register('fingerprintSpoofer', () => require('./fingerprint-spoofer'))
 
@@ -173,7 +174,6 @@ function createWindow() {
     setTimeout(() => {
       lazy.init('webrtcBlocker')
       lazy.init('fingerprintSpoofer')
-      lazy.init('adInjector')
       lazy.init('downloader', win)
       lazy.init('proxy',      win)
       console.log('[Main] All modules initialised')
@@ -198,9 +198,13 @@ function createWindow() {
   ipcMain.on('window-close',    () => win.close())
   ipcMain.handle('get-version', () => app.getVersion())
 
-  // ── Core modules (must be ready before page 1 loads) ─────────────────────
-  adblocker.init(win)
+  // ── Core modules (needed before first request or first render) ──────────
+  safeAdblocker.init(win)   // Ghostery network blocking (all sites)
+  sponsorBlock.init()       // YouTube sponsor segment skipper
+  facebookHide.init()       // Facebook/Instagram CSS sponsored-post hider
   privacy.init(win)
+  lazy.init('proxy',      win)   // needed by VPN dot in toolbar on load
+  lazy.init('downloader', win)   // needed by download widget on load
 
   // ── Performance monitor ───────────────────────────────────────────────────
   performance.init(win)
@@ -211,21 +215,6 @@ function createWindow() {
   // ── Background security scan: fires AFTER navigation, never blocks it ────
   app.on('web-contents-created', (_event, wc) => {
     wc.on('did-navigate', (_e, url) => scanDomainBackground(win, url))
-  })
-
-  // ── Settings window ───────────────────────────────────────────────────────
-  ipcMain.handle('open-settings', () => {
-    const existing = BrowserWindow.getAllWindows().find(w =>
-      !w.isDestroyed() && w.getTitle() === 'Ad Blocker Settings')
-    if (existing) { existing.focus(); return }
-    const sw = new BrowserWindow({
-      width: 720, height: 560, parent: win,
-      title: 'Ad Blocker Settings', backgroundColor: '#202124', show: false,
-      webPreferences: { nodeIntegration: false, contextIsolation: true, preload: path.join(__dirname, 'preload.js') }
-    })
-    sw.loadFile('adblocker-settings.html')
-    sw.setMenuBarVisibility(false)
-    sw.once('ready-to-show', () => sw.show())
   })
 
   // ── Save page as PDF ──────────────────────────────────────────────────────
