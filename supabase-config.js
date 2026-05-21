@@ -7,8 +7,8 @@
   // │  2. Create a new project                                                  │
   // │  3. Settings → API → copy "Project URL" and "anon public" key below      │
   // └───────────────────────────────────────────────────────────────────────────┘
-  const SUPABASE_URL  = 'https://YOUR_PROJECT_REF.supabase.co'
-  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.YOUR_ANON_KEY'
+  const SUPABASE_URL  = 'https://twokhpqypztkerqzxnnx.supabase.co'
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3b2tocHF5cHp0a2VycXp4bm54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNTk4OTMsImV4cCI6MjA5NDkzNTg5M30.MmhZTimC0iqwiMDGWzq7EmiM53q2K3bMcTxHTVa6KzI'
 
   async function req(method, path, body, token) {
     const headers = { 'Content-Type': 'application/json', apikey: SUPABASE_ANON }
