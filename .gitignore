@@ -40,3 +40,12 @@ desktop.ini
 *.bak
 *.tmp
 *.orig
+
+# Android
+.gradle/
+local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+.kotlin/

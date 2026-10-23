@@ -1,0 +1,12 @@
+# Pinned, known-compatible matrix: AGP 8.11 needs Gradle >= 8.13 and supports compileSdk 36.
+[versions]
+agp = "8.11.1"
+kotlin = "2.2.0"
+junit = "4.13.2"
+
+[libraries]
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
