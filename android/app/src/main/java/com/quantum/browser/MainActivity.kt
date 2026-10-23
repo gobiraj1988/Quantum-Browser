@@ -266,8 +266,11 @@ class MainActivity : Activity(), TabHost {
         }
     }
 
-    @Deprecated("Used below API 33 only")
-    override fun onBackPressed() = handleBack()
+    /** Below API 33 there is no OnBackInvokedDispatcher, so the back key arrives here. */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK && Build.VERSION.SDK_INT < 33) { handleBack(); return true }
+        return super.onKeyDown(keyCode, event)
+    }
 
     private fun handleBack() {
         val tab = current
