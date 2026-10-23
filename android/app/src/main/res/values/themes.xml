@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Quantum" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">#FB542B</item>
+        <item name="android:colorAccent">#FB542B</item>
+        <item name="android:colorBackground">#17171B</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <color name="bg">#17171B</color>
+    <color name="ic_bg">#17171B</color>
+</resources>
